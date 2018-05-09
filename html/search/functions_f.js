@@ -1,0 +1,23 @@
+var searchData=
+[
+  ['saveale',['saveALE',['../classCladesAndTripartitions.html#a7279824e2739de90eb4154001756c94a',1,'CladesAndTripartitions']]],
+  ['savebestreceivers',['saveBestReceivers',['../classDTLMatrix.html#a91fef24476f6a301a4f136f104d3a191',1,'DTLMatrix']]],
+  ['score_5fequal',['SCORE_EQUAL',['../classDTLGraph.html#a4e79d62d7706994409932ff97821ccc6',1,'DTLGraph']]],
+  ['score_5fgreater',['SCORE_GREATER',['../classDTLGraph.html#abc65049ffb1053d8a0f7759070289eb1',1,'DTLGraph']]],
+  ['scorereconciliation',['scoreReconciliation',['../classDTLGraph.html#a460ed5987fe3b5f5e17c561acabc31b5',1,'DTLGraph']]],
+  ['secondaryfather',['secondaryFather',['../classDTLMatrixNetwork.html#ada164d098a816e1d1a2fffb81a3d5b39',1,'DTLMatrixNetwork']]],
+  ['setdim',['setDim',['../classMyMatrix.html#a6e8d211399dc7a9555af6a739a2946bb',1,'MyMatrix::setDim()'],['../classMyMatrixAdjSolution.html#acb4daa5269f4b2e39e8db787467b7bad',1,'MyMatrixAdjSolution::setDim()'],['../classMyMatrixT.html#a6393612c13e943aac3d2f4b2726373af',1,'MyMatrixT::setDim()'],['../classMyMatrixV.html#a3c470a1e26bb411cc367dbd1fcd52ed6',1,'MyMatrixV::setDim()']]],
+  ['setnodedetailsfromxmlline',['setNodeDetailsFromXMLLine',['../classReconciledTree.html#ae8ced37d5f0fbd242f583cd338f6028e',1,'ReconciledTree']]],
+  ['setsubtreeboundaryts',['setSubtreeBoundaryTS',['../classReconciledTree.html#af72a73f29f383829d7ffc09632ba719c',1,'ReconciledTree']]],
+  ['setvalue',['setValue',['../classMyMatrix.html#ad7323cc9511beee18990afbdd402a8e1',1,'MyMatrix']]],
+  ['setvalues',['setValues',['../classMyMatrixAdjSolution.html#a9ba78fc685d7a04fe646c1f868d245a7',1,'MyMatrixAdjSolution::setValues()'],['../classMyMatrixT.html#abbea65bf0c7f4f71dba1cac811561ac9',1,'MyMatrixT::setValues()'],['../classMyMatrixV.html#a787c079018e9c3edc706536362af83d3',1,'MyMatrixV::setValues()']]],
+  ['setvectortimeslices',['setVectorTimeSlices',['../classMySpeciesTree.html#a8372a4521e6c7cf9d0189e2712fcf5f0',1,'MySpeciesTree']]],
+  ['solutionc0asynchronoustwochildren',['SolutionC0asynchronousTwoChildren',['../classAdjMatrix.html#a1eda3377940567ff4f0f56b001d1e2ae',1,'AdjMatrix']]],
+  ['solutionc0defaultimpossiblecaseaux',['SolutionC0DefaultImpossibleCaseAux',['../classAdjMatrix.html#adcbe78c40b840ce04ef2af2c4accabd7',1,'AdjMatrix']]],
+  ['solutionc0synchronoustwoandonechildren',['SolutionC0synchronousTwoAndOneChildren',['../classAdjMatrix.html#a63e7a14cf424c9216545ba2d70890a6c',1,'AdjMatrix']]],
+  ['solutionc1asynchronoustwochildren',['SolutionC1asynchronousTwoChildren',['../classAdjMatrix.html#a77229ea0b360e1830b1629ec462462c6',1,'AdjMatrix']]],
+  ['solutionc1synchronoustwoandonechildren',['SolutionC1synchronousTwoAndOneChildren',['../classAdjMatrix.html#af9d106f39d393df8a9e1219b3557e758',1,'AdjMatrix']]],
+  ['suboptsetfinalcosts',['suboptSetFinalCosts',['../classDTLMatrix.html#ad74b7cd93e159f8b156e34a77a942026',1,'DTLMatrix']]],
+  ['supportstring',['supportString',['../DTLGraph_8cpp.html#a0b8443328229d263a79efb0245beb140',1,'DTLGraph.cpp']]],
+  ['switching',['switching',['../classMyGeneTree.html#a7f97410d84e0e6c39656eb9c9c5be1d2',1,'MyGeneTree']]]
+];

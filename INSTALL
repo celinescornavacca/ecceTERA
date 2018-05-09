@@ -1,0 +1,61 @@
+01/10/2015
+
+========== SETUP =======================================
+Download ecceTERA from http://mbb.univ-montp2.fr/MBB/download_sources/16__TERA and extract it.
+
+Executables for Mac and Linux (64-bit) are available in the bin directory.
+
+Alternatively, ecceTERA can be built from the source code (see below).
+
+========== RUNNING ecceTERA =======================================
+
+To test the installation, try running: 
+bin/ecceTERA species.file=../tests/Stree.tree gene.file=../tests/HBG284008_1.gtrees 
+
+It should return a cost of 85.
+
+Note: run bin/ecceTERA_linux64 or bin/ecceTERA_mac instead of bin/ecceTERA if not built from source.
+
+A description of the other program options can be found in ecceTERA.pdf.
+
+
+=========== INSTALLATION FROM SOURCE CODE =========================
+
+REQUIREMENTS
+1. ecceTERA download (http://mbb.univ-montp2.fr/MBB/download_sources/16__TERA)
+2. Boost libraries (www.boost.org).
+3. Bio++: bpp-core, bpp-phyl, and bpp-seq packages (biopp.univ-montp2.fr).
+4. cmake (http://cmake.org/download/)
+
+ecceTERA was tested with these versions.
+Bio++ 2.20
+Boost 1.55.0, 1.59.0
+
+For Bio++, we recommend using the automatic installation script (http://biopp.univ-montp2.fr/Download/bpp-setup.sh)
+See http://biopp.univ-montp2.fr/wiki/index.php/Installation for more information.
+
+
+BUILDING
+1. Extract the tera download.
+2. cd ecceTERA/build
+3. cmake ..
+4. make
+
+
+CMAKE PARAMETERS 
+
+If CMake cannot find the Boost or the Bio++ libraries, try adding the following parameters to the cmake command line using the appropriate directories (assuming the bpp-phyl-2.2.0, bpp-seq-2.2.0, and bpp-core-2.2.0 are in the /home/user/local directory):
+
+cmake -DBOOST_ROOT=/home/local/user/boost -DCMAKE_LIBRARY_PATH=/home/user/local/ -DCMAKE_INCLUDE_PATH=/home/user/local/ ..
+
+To use a g++ compiler instead of c++, append the following to the cmake command line:
+-DCMAKE_CXX_COMPILER=/usr/bin/g++ 
+
+If the Bio++ libraries are installed in a non-standard location, their location needs to be specified to run ecceTERA, such as with the environment variable LD_LIBRARY_PATH, e.g.:
+set LD_LIBRARY_PATH /home/user/local/bpp-core-2.2.0/src:/home/user/local/bpp-seq-2.2.0/src:/home/user/local/bpp-phyl-2.2.0/src
+export LD_LIBRARY_PATH
+
+
+
+
+

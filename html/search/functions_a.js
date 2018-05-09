@@ -1,0 +1,25 @@
+var searchData=
+[
+  ['main',['main',['../Wmodif__main_8cpp.html#ab423fe86e32010f050d776f64231d2b1',1,'Wmodif_main.cpp']]],
+  ['makebicomptree',['makeBicompTree',['../classNetAlg.html#a039a2dbde43934ccb33a75fdb36bb351',1,'NetAlg']]],
+  ['makebinary',['makeBinary',['../classMyTreeTemplate.html#a3519376f8b5af3adab1d506795bde9d5',1,'MyTreeTemplate']]],
+  ['makebinaryswitching',['makeBinarySwitching',['../classMyNetwork.html#a13a56f1c508c8ff122d3fad42d090d7a',1,'MyNetwork']]],
+  ['makegn',['makeGn',['../classNetAlg.html#ac9301c1495754bd55c6b8fcec4d66d9c',1,'NetAlg']]],
+  ['makegnaux',['makeGnAux',['../classNetAlg.html#a574b0c4707f747b7b9b481520829f971',1,'NetAlg']]],
+  ['makegraph',['makeGraph',['../ecceTERA_8cpp.html#adff4d5812dcc99d4edc2277a7262284f',1,'ecceTERA.cpp']]],
+  ['makeintervals',['makeIntervals',['../classDTLGraph.html#a8c9bed72d25402a0513884fd7d288c20',1,'DTLGraph']]],
+  ['makereconciliation',['makeReconciliation',['../classGeneFamily.html#ace8930bd3777ed89cd97ce970d14e1a8',1,'GeneFamily']]],
+  ['mapcladestonodes',['mapCladesToNodes',['../classCladesAndTripartitions.html#a3d12594770ce691204ad9b40588b0614',1,'CladesAndTripartitions']]],
+  ['mapcladestonodesaux',['mapCladesToNodesAux',['../classCladesAndTripartitions.html#a82b150c72172e2077bf02eb5a3928a61',1,'CladesAndTripartitions']]],
+  ['mappingfromids',['mappingFromIds',['../classDTLGraph.html#ae6dcdfc99863757d0ea73869fb479a0a',1,'DTLGraph::mappingFromIds(int id_u, int id_x, double cost)'],['../classDTLGraph.html#a1f5d3475e79d4aab5aa7bff6ddefcc46',1,'DTLGraph::mappingFromIds(int id_u, int id_x, double cost, int d, int t, int l)']]],
+  ['mapspeciesnames',['mapSpeciesNames',['../classClades.html#abcf71ba22218031192bc8470ee756b2c',1,'Clades']]],
+  ['merge',['merge',['../classNetAlg.html#a9403dbf9609b593c07864a1818048a1a',1,'NetAlg']]],
+  ['mergeclades',['mergeClades',['../classClades.html#a38fb532da869991fae5d8798f4d864ff',1,'Clades']]],
+  ['minrecsloop',['minRecsLoop',['../ecceTERA_8cpp.html#ae471e61acb617289eedde8b5f7d1f1de',1,'ecceTERA.cpp']]],
+  ['mkpath',['mkpath',['../ecceTERA_8cpp.html#a886e87dfc9e7751e48d47a01dd7b5fcc',1,'mkpath(string path):&#160;ecceTERA.cpp'],['../ilsTERA_8cpp.html#a886e87dfc9e7751e48d47a01dd7b5fcc',1,'mkpath(string path):&#160;ilsTERA.cpp'],['../Wmodif__main_8cpp.html#a886e87dfc9e7751e48d47a01dd7b5fcc',1,'mkpath(string path):&#160;Wmodif_main.cpp']]],
+  ['mycladesandtripartitions',['MyCladesAndTripartitions',['../classMyCladesAndTripartitions.html#abbafe85ba1b070d3d12d49c821060ca8',1,'MyCladesAndTripartitions::MyCladesAndTripartitions(char charSep, vector&lt; MyGeneTree * &gt; &amp;geneTrees, bool verbose, bool &amp;overflow, string &amp;errStr, bool polytomy=false)'],['../classMyCladesAndTripartitions.html#ac6707e9bc9624669364ebe2f37c27204',1,'MyCladesAndTripartitions::MyCladesAndTripartitions(char charSep, string aleFileName, string &amp;errStr, bool verbose)']]],
+  ['mygenetree',['MyGeneTree',['../classMyGeneTree.html#acb61eafe36fa07fca24128d225df649e',1,'MyGeneTree::MyGeneTree(MyGeneNode &amp;root)'],['../classMyGeneTree.html#aa22b63919b37033cef1c9f2a9ca76be5',1,'MyGeneTree::MyGeneTree(string description, string &amp;errString, bool readBootstrap=false)']]],
+  ['mynetwork',['MyNetwork',['../classMyNetwork.html#ac2bf40470cf0283340769027b03c7e12',1,'MyNetwork::MyNetwork(MySpeciesNode &amp;root)'],['../classMyNetwork.html#af8667af1eeb007b77a604492a9d21be2',1,'MyNetwork::MyNetwork(string description, string &amp;errString)'],['../classMyNetwork.html#ad1ea9cdc877678e3db78b4b659fc97d3',1,'MyNetwork::MyNetwork(const MyNetwork &amp;tree)'],['../classMyNetwork.html#a6913c04e218f869c8802d19a8ec838a5',1,'MyNetwork::MyNetwork(MyNetwork &amp;origNetwork)']]],
+  ['myspeciestree',['MySpeciesTree',['../classMySpeciesTree.html#a1031453549f0194e886cae71357de45d',1,'MySpeciesTree::MySpeciesTree()'],['../classMySpeciesTree.html#a99760a217df79126aa80ba1a2343d863',1,'MySpeciesTree::MySpeciesTree(MySpeciesNode &amp;root)'],['../classMySpeciesTree.html#a7d54ec66dfa13a4d9e25a7a28800ad64',1,'MySpeciesTree::MySpeciesTree(string description, string &amp;errString, bool bootstrap=false)'],['../classMySpeciesTree.html#a60db87bf23da13bb1cd0c5040a5a48f5',1,'MySpeciesTree::MySpeciesTree(const MySpeciesTree &amp;tree)']]],
+  ['mytreetemplate',['MyTreeTemplate',['../classMyTreeTemplate.html#a577dd7b404a84b4766a4a5b55b91fbdc',1,'MyTreeTemplate::MyTreeTemplate()'],['../classMyTreeTemplate.html#ac1aace8a350a3de4b9af54251b1d9ea0',1,'MyTreeTemplate::MyTreeTemplate(const MyTreeTemplate&lt; N &gt; &amp;root)'],['../classMyTreeTemplate.html#a9793bdf8ed1e28dae9e4b20a502a90be',1,'MyTreeTemplate::MyTreeTemplate(N *root)']]]
+];
