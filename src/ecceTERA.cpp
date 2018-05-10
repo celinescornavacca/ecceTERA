@@ -1695,7 +1695,40 @@ void collapseTree(
     bool firstLoop = true;
     bool continueLoop = true;
     unsigned long long numberOfTrees = 0;
+    
+    
+    vector<double> valuesForCollapsing;
+    vector<MyGeneNode*> nodes= geneTree->getNodes();
+	for (unsigned int n=0; n <nodes.size() ; n++){
+		if(nodes[n]->getNumberOfSons()!=0){
+			if(gIntParams.find("collapse.mode")->second==0 && nodes[n]->hasDistanceToFather())
+				valuesForCollapsing.push_back(nodes[n]->getDistanceToFather()+0.00001);
+			else 
+				if(gIntParams.find("collapse.mode")->second==1 && nodes[n]->hasBranchProperty(bpp::TreeTools::BOOTSTRAP)){
+				valuesForCollapsing.push_back(dynamic_cast<const bpp::Number<double> *> (nodes[n]->getBranchProperty(bpp::TreeTools::BOOTSTRAP))->getValue()+0.00001);          
+				}   
+		}
+            
+    }
+       
+    std::sort( valuesForCollapsing.begin(), valuesForCollapsing.end() );
+     
+    int nextTresholdToTry=valuesForCollapsing.size()-1;
+
+    //valuesForCollapsing.push_back(valuesForCollapsing[valuesForCollapsing.size()-1]+0.00001);
+        
+    //std::sort( valuesForCollapsing.begin(), valuesForCollapsing.end() );
+
+    bool foundNextTresholdToTry=false;
+    for (int n=valuesForCollapsing.size()-1; n>=0 ; n--){
+       if(!foundNextTresholdToTry && (valuesForCollapsing[n])<threshold){
+          nextTresholdToTry=n;
+          foundNextTresholdToTry=true;
+      }
+    }
+
     while( firstLoop || continueLoop ) {
+    
         if( !firstLoop ) {
             //if( gDoubleParams.find("tree.limit")->second!=0 ) 
             //    cout << "number of trees (" << numberOfTrees
@@ -1730,32 +1763,9 @@ void collapseTree(
                 bootstrapGeneTree = new MyGeneTree( *geneTree );
         }
         
-        vector<double> valuesForCollapsing;
-        vector<MyGeneNode*> nodes= geneTree->getNodes();
-        for (unsigned int n=0; n <nodes.size() ; n++){
-            if(nodes[n]->getNumberOfSons()!=0){
-                if(gIntParams.find("collapse.mode")->second==0 && nodes[n]->hasDistanceToFather())
-                    valuesForCollapsing.push_back(nodes[n]->getDistanceToFather()+0.00001);
-                else if(gIntParams.find("collapse.mode")->second==1 && nodes[n]->hasBranchProperty(bpp::TreeTools::BOOTSTRAP))
-                    valuesForCollapsing.push_back(dynamic_cast<const bpp::Number<double> *> (nodes[n]->getBranchProperty(bpp::TreeTools::BOOTSTRAP))->getValue()+0.00001);             
-            }
-            
-        }
-        
-        std::sort( valuesForCollapsing.begin(), valuesForCollapsing.end() );
 
-        //valuesForCollapsing.push_back(valuesForCollapsing[valuesForCollapsing.size()-1]+0.00001);
-        
-        std::sort( valuesForCollapsing.begin(), valuesForCollapsing.end() );
 
-        int nextTresholdToTry=valuesForCollapsing.size()-1;
-        bool foundNextTresholdToTry=false;
-        for (int n=valuesForCollapsing.size()-1; n>=0 ; n--){
-            if(!foundNextTresholdToTry && (valuesForCollapsing[n])<threshold){
-                nextTresholdToTry=n;
-                foundNextTresholdToTry=true;
-            }
-        }
+
         
         
         // collapse tree to make it polytomic
@@ -1785,13 +1795,24 @@ void collapseTree(
         //    exit(1);
         }
 
-        threshold = valuesForCollapsing[nextTresholdToTry] ;
+		if(threshold==0){
+			continueLoop = false;
+			
+		}
+		else{		
 
-        nextTresholdToTry--; // -= gDoubleParams.find("collapse.decrement")->second; 
-        if(nextTresholdToTry ==-1 && continueLoop){
+        	threshold = valuesForCollapsing[nextTresholdToTry] ;
+
+			if (!firstLoop)
+				nextTresholdToTry--;
+		}		
+		
+        if(nextTresholdToTry ==-2 && continueLoop){
             cout << "Impossible to get a max out degree of " << maxDegree << " for this tree. Collapsing the branches with the smallest threshold (";
             cout << valuesForCollapsing[0] << ") makes the tree reaches the chosen max out degree!"<< endl;
-            exit(-1);
+            cout << "The gene tree is thus unchanged\n";
+            threshold=0;
+            //exit(-1);
         }
         firstLoop = false;
     }
