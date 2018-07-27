@@ -6,7 +6,7 @@ read the INSTALL file to install
 ========== RUNNING ecceTERA =======================================
 
 To test the installation, try running: 
-bin/ecceTERA species.file=../tests/Stree.tree gene.file=../tests/HBG284008_1.gtrees 
+bin/ecceTERA species.file=./tests/Stree.tree gene.file=:./tests/HBG284008_1.gtrees 
 
 It should return a cost of 85.
 
