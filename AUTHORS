@@ -1,2 +1,5 @@
 Celine Scornavacca celine.scornavacca@univ-montp2.fr
 Edwin Jacox edwin.jacox@univ-montp2.fr
+
+ecceTERA uses part of the boost  (1.67.0) and Bio++ (Bio++ 2.20) libraires (see src/ext)
+Thanks to the developpers of these libraries! 
