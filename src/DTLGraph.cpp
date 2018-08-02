@@ -2194,6 +2194,7 @@ void DTLGraph::printReconciliation(
         ///< which reconciliation: symmetric, asymmetric, random, or all
     string fileName, ///< base output file name
     bool sylvxFormat, ///< use the Sylvx format for the reconciliation
+    bool recPhyloXMLFormat, ///< use the recPhyloXMLFormat for the reconciliation
     bool checkConsistent, ///< check consistency of reconciliation
     bool &isConsistent,  ///< returns true if at least one is consistent
     map<string,double> &eventSupports ) ///< event supports to use
@@ -2238,7 +2239,12 @@ void DTLGraph::printReconciliation(
                 reconStrings = getSylvxReconciliation( reconciliation );
                 reverse( reconStrings.begin(), reconStrings.end() );
                 problemFileName += ".mr";
-            } else {
+            } 
+            else if (recPhyloXMLFormat) {
+                reconStrings = getRecPhyloXMLReconciliation( reconciliation );
+                problemFileName += ".recPhyloXML";
+            }
+            else {
                 reconStrings = printReconciliationAux( 
                                 reconciliation, eventSupports );
                 problemFileName += ".txt";
@@ -2703,6 +2709,194 @@ cout << "loss: " << event << endl;
     }
 }
 
+
+
+/**
+ * Create a string representation of a reconciliation.
+ * in the RecPhyloXML format (see http://phylariane.univ-lyon1.fr/recphyloxml/
+ * for more details.
+ */
+
+
+vector<string> DTLGraph::getRecPhyloXMLReconciliation(
+    vector< vector<MyGraph::Vertex> > &reconciliation
+        ///< list of vertices, by clade in the reconcilation
+        )
+{
+	vector<string> temp;
+	vector<int> cladeToPOrd = mCladesTrips->getPostOrderMapping();
+	string geneTree_recPhyloXML_format= mSpeciesTree->MySpeciesTree::toRecPhyloXML() ;
+	geneTree_recPhyloXML_format= geneTree_recPhyloXML_format + "<recGeneTree>\n<phylogeny rooted=\"true\">\n";
+	geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + DTLGraph::getRecPhyloXMLReconciliation(reconciliation,-1, mCladesTrips->mClades.getRootClade(), cladeToPOrd);
+	geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "</phylogeny>\n</recGeneTree>\n</recPhylo>";
+	temp.push_back(geneTree_recPhyloXML_format);
+	//cout << temp[0] << endl;
+	//cout << geneTree_recPhyloXML_format << endl;
+	return temp; 
+};
+
+string DTLGraph::getRecPhyloXMLReconciliation(
+    vector< vector<MyGraph::Vertex> > &reconciliation,
+        ///< list of vertices, by clade in the reconcilation
+        int idUP,
+        int idU,
+     vector< int>  &cladeToPOrd  ///< map of clade ids to DF post-order numbering
+    )
+{    
+	
+	//    int idX = mGraph.properties(mappingV).id_x;
+   // MySpeciesNode *node = mSpeciesTree->getNodeById( idX );
+    //idX = node->getId();
+	// string eventName = mGraph.properties(reconciliation[idU][z+1]).name;
+	//            string eventStr=getEventString(idU, z, reconciliation, idUl, idUr,
+    //                                        eventSupports );
+	
+	int reconciliationIdx =0;
+	MyGraph::Vertex mappingV = 0; 
+	int reconciliationIdxMappingV=-1;
+	int eventNumber=0;
+
+	string name;
+	
+	bool isLeaf = mCladesTrips->mClades.isLeaf( idU );
+	string geneTree_recPhyloXML_format;
+	
+	int lossId=0;
+			
+	bool doneWithIdU=false;
+	//cout << "idU " << idU << endl;
+	while (!doneWithIdU){ 
+		while( reconciliationIdx < reconciliation[idU].size() ) {
+			MyGraph::Vertex  v = reconciliation[idU][reconciliationIdx++];
+			if( mGraph.properties(v).isMapping ) {
+				mappingV = v; // save mapping vertex 
+				reconciliationIdxMappingV = reconciliationIdx-1;
+			} else {
+				name = mGraph.properties(v).name;
+				if( name[0] != 'O' )
+					break; // skip artificial nodes
+			}
+		}
+		eventNumber++;
+   
+		string idToPrint;
+	
+		string event = name.substr(0,2);
+		
+		//cout << "event " << event << endl;
+				
+		geneTree_recPhyloXML_format= geneTree_recPhyloXML_format + "<clade>\n<name>";
+	    
+		if(event=="C_" || event=="S_" || event=="D_" || event=="T_"){
+			
+        	if( isLeaf )
+            	geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + mCladesTrips->mClades.getLeafName(idU) ;
+       		else
+            	geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + bpp::TextTools::toString( cladeToPOrd[idU] ) ;       
+		}
+		else if (event=="SL"){
+			lossId ++;  
+			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "SL" + bpp::TextTools::toString(lossId) + "_" + bpp::TextTools::toString(cladeToPOrd[idU]) + "_" + bpp::TextTools::toString(mSpeciesTree->getNodeById(mGraph.properties(mappingV).id_x)->getId()) ;
+			
+		}
+		else if (event=="TL"){
+			lossId ++;  
+			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "TL" + bpp::TextTools::toString(lossId) + "_" + bpp::TextTools::toString(cladeToPOrd[idU]) + "_" + bpp::TextTools::toString(mSpeciesTree->getNodeById(mGraph.properties(mappingV).id_x)->getId()) ;
+			
+		}
+		
+		geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "</name>\n";
+	
+		geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<eventsRec>\n";
+				
+		if(mSpeciesTree->getNodeById(mGraph.properties(mappingV).id_x)->isLeaf())
+			idToPrint=mSpeciesTree->getNodeById(mGraph.properties(mappingV).id_x)->getName() ;
+		else
+			idToPrint=bpp::TextTools::toString(mSpeciesTree->getNodeById(mGraph.properties(mappingV).id_x)->getId()) ;
+
+		
+		bool previousEventIsTransfert=false;
+		string previousEvent;
+		int keptSonT =-1;
+		
+		if(idUP!=-1 && eventNumber==1){ // the previous event is associated to the parent of idU, ie idUP
+			previousEvent= mGraph.properties(reconciliation[idUP][ reconciliation[idUP].size()-1]).name.substr(0,2);
+			keptSonT = mGraph.properties(reconciliation[idUP][reconciliation[idUP].size()-2]).id_x; 
+
+		}	
+		else if (reconciliationIdxMappingV-2 >=0){ // the previous event is associated to idU
+			previousEvent= mGraph.properties(reconciliation[idU][reconciliationIdxMappingV-1]).name.substr(0,2);
+		}
+
+		if(previousEvent=="TL"  ||  (previousEvent=="T_" && mGraph.properties(mappingV).id_x != keptSonT) ){// in TL, the keptSon is always id_x while in T is the sibling of the keptOne
+			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<transferBack destinationSpecies=\""  + idToPrint + "\"></transferBack>\n";
+		}	
+			
+				 		
+		 if(event=="C_" ){
+			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<leaf speciesLocation=\"" + idToPrint + "\" geneName=\"" +mCladesTrips->mClades.getLeafName(idU)  + "\"></leaf>";
+		}
+		 else if(event=="S_" || event=="SL"){
+			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<speciation speciesLocation=\""  + idToPrint + "\"></speciation>";
+		}
+		 else if(event=="D_"){
+			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<duplication speciesLocation=\""  + idToPrint + "\"></duplication>";
+		}
+		else if(event=="T_" || event=="TL"){
+			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<branchingOut speciesLocation=\""  + idToPrint + "\"></branchingOut>";
+		}
+		
+		geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "\n</eventsRec>\n";
+		
+		 if(event=="SL" || event=="TL" ){ // add the loss
+			int lostSonX =-1;
+		 	if(event=="SL" ){
+				MyGraph::Vertex vNext = reconciliation[idU][reconciliationIdxMappingV+2];
+        		int keptSonX = mGraph.properties(vNext).id_x; 
+        		lostSonX = getSibling( mGraph.properties(reconciliation[idU][reconciliationIdxMappingV]).id_x, keptSonX, false );
+            }
+            else
+            	lostSonX = mGraph.properties(mappingV).id_x;
+                        
+            geneTree_recPhyloXML_format= geneTree_recPhyloXML_format + "<clade>\n<name>LOST</name>\n<eventsRec>\n<loss speciesLocation=\"";
+			string idToPrintLoss;
+			
+			if(mSpeciesTree->getNodeById(lostSonX)->isLeaf())
+				idToPrintLoss=mSpeciesTree->getNodeById(lostSonX)->getName() ;
+			else
+				idToPrintLoss=bpp::TextTools::toString(mSpeciesTree->getNodeById(lostSonX)) ;
+			
+			geneTree_recPhyloXML_format = geneTree_recPhyloXML_format + idToPrintLoss;
+
+            geneTree_recPhyloXML_format= geneTree_recPhyloXML_format + "\"></loss>\n</eventsRec>\n</clade>\n";
+		}
+		
+		if(reconciliationIdx== reconciliation[idU].size())
+			doneWithIdU=true;
+			
+	}
+	
+
+	if( ! isLeaf ){
+		pair<int,int> cladeSplit = mCladesTrips->getCladeSplit( idU, 0 );
+    	int idUl = cladeSplit.first;
+    	int idUr = cladeSplit.second;
+
+		geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + DTLGraph::getRecPhyloXMLReconciliation(reconciliation, idU, idUl, cladeToPOrd);
+		geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + DTLGraph::getRecPhyloXMLReconciliation(reconciliation, idU, idUr, cladeToPOrd);
+	}
+		
+	geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "</clade>\n";
+
+	for (int l=1; l <=lossId ; l++){
+		geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "</clade>\n"; //closing the clade for the SL and TL events
+	}
+	return geneTree_recPhyloXML_format;
+};
+
+
+
+
 vector<string> DTLGraph::getSylvxReconciliation(
     vector< vector<MyGraph::Vertex> > &reconciliation )
 {
@@ -2769,6 +2963,9 @@ else if( idU != rootClade ) {
 
     return lines;
 }
+
+
+
 
 /**
  * Create a string representation of a reconciliation.
@@ -3319,6 +3516,7 @@ bool DTLGraph::depthFirstOrderIncrement(
 long DTLGraph::printAllReconciliations(
     string path, ///< File name
     bool sylvxFormat, ///< output in the Sylvx format
+    bool recPhyloXMLFormat, ///< use the recPhyloXMLFormat for the reconciliation
     bool checkConsistent, ///< only print consistent reconciliations
     int limit ) ///< maximum number of reconciliations to print
 {

@@ -245,6 +245,10 @@ public:
     //WDF
     bool isSubdivided();
     //WDFend
+    
+    string toRecPhyloXML();
+
+    string toRecPhyloXML(MySpeciesNode *node);
 
 };	
 

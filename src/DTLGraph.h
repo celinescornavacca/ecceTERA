@@ -397,6 +397,10 @@ private:
         string fatherEvent = "ROOT",
         string prevRealX = "ROOT", 
         string prevRealFatherX = "ROOT" );
+        vector<string> getRecPhyloXMLReconciliation(
+            vector< vector<MyGraph::Vertex> > &reconciliation );
+        string getRecPhyloXMLReconciliation(
+            vector< vector<MyGraph::Vertex> > &reconciliation, int idUP, int idU,  vector< int>  &cladeToPOrd );    
     vector<string> getSylvxReconciliation(
             vector< vector<MyGraph::Vertex> > &reconciliation );
     string getStringId( int idX );
@@ -486,9 +490,10 @@ public:
     void orthologyOutput( string fileName );
     void printReconciliation( string problemStr, string fileName,
                 bool sylvxFormat,
+                bool recPhyloXMLFormat, 
                 bool checkConsistent, bool &isConsistent,
                 map<string,double> &eventSupports );
-    long printAllReconciliations( string path, bool sylvxFormat,
+    long printAllReconciliations( string path, bool sylvxFormat, bool recPhyloXMLFormat, 
                                   bool checkConsistent, int limit=0 );
 
 

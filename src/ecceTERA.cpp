@@ -79,7 +79,7 @@ std::map<string,string> gStringParams; // string, char, and path
 
 // Ordered for the help message.
 // Parameters with an empty description are not displayed in the help.
-const int gParameterCount = 82; // This must matche the size of gParameters
+const int gParameterCount = 83; // This must matche the size of gParameters
 string const gParameters[gParameterCount][4] = {
 // basic options
  {"species.file", "path", "required", "species tree file (newick)" },
@@ -150,6 +150,7 @@ string const gParameters[gParameterCount][4] = {
  {"solution.limit", "int", "100000", 
       "maximum number of solutions for print.reconciliations=2"},
  {"sylvx.reconciliation", "bool", "false", "print the reconciliations using the Sylvx format"},
+ {"recPhyloXML.reconciliation", "bool", "false", "print the reconciliations using the RecPhyloXML format"},
 
  // amalgamation options
  {"ale", "bool", "false", "gene.file is an ALE file"},
@@ -1309,6 +1310,7 @@ void printReconciliations(
         }
         optGraph.printReconciliation( whichRecs, pathName,
                 gBoolParams.find("sylvx.reconciliation")->second, 
+                gBoolParams.find("recPhyloXML.reconciliation")->second, 
                 gBoolParams.find("check.time.consistency")->second, 
                 isConsistent, eventSupports );
     } else {
@@ -1319,6 +1321,7 @@ void printReconciliations(
                 + ext;
         graph.printReconciliation( whichRecs, pathName,
                 gBoolParams.find("sylvx.reconciliation")->second, 
+                gBoolParams.find("recPhyloXML.reconciliation")->second, 
                 gBoolParams.find("check.time.consistency")->second, 
                 isConsistent, eventSupports );
     }
@@ -1364,6 +1367,7 @@ void printReconciliations(
             pathName += "_consistent";
         long printCount = graph.printAllReconciliations( pathName, 
                         gBoolParams.find("sylvx.reconciliation")->second, 
+                    	gBoolParams.find("recPhyloXML.reconciliation")->second, 
                         gBoolParams.find("check.time.consistency")->second,
                         gIntParams.find("solution.limit")->second );
         if( printCount != numberSolutions )
@@ -1465,6 +1469,7 @@ void makeGraph(
         bool isConsistent = false;
         graph.printReconciliation( "random", pathName,
             gBoolParams.find("sylvx.reconciliation")->second, 
+            gBoolParams.find("recPhyloXML.reconciliation")->second, 
             gBoolParams.find("check.time.consistency")->second, 
             isConsistent, eventSupports);
     } else if( numberSolutions == 0 ) {
@@ -1842,6 +1847,7 @@ MySpeciesTree *getSpeciesTree()
             gStringParams.find("species.file")->second.c_str(),
             errString, 
             gBoolParams.find("dates.as.bootstraps")->second );
+                        
     if( errString != "" || speciesTree == NULL ) {
         cerr << "Error reading species tree: " << errString << endl;
         exit(1);

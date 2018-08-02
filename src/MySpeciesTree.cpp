@@ -2077,6 +2077,35 @@ void MySpeciesTree::printSif(
     }
 }
 
+/**
+ * Return the tree in recPhyloXML format .
+ */
+string MySpeciesTree::toRecPhyloXML(){
+	string speciesTree_recPhyloXML_format="<recPhylo>\n<spTree>\n<phylogeny>";
+	speciesTree_recPhyloXML_format=speciesTree_recPhyloXML_format + MySpeciesTree::toRecPhyloXML(this->getRootNode());
+	speciesTree_recPhyloXML_format=speciesTree_recPhyloXML_format + " </phylogeny>\n</spTree>";
+	return speciesTree_recPhyloXML_format;
+};
+
+string MySpeciesTree::toRecPhyloXML(MySpeciesNode *node){
+	string speciesTree_recPhyloXML_format="<clade>\n<name>";
+	
+    if(node->getNumberOfSons()==0){
+          speciesTree_recPhyloXML_format=speciesTree_recPhyloXML_format + node->getName();
+    }
+    else{
+        speciesTree_recPhyloXML_format=speciesTree_recPhyloXML_format + bpp::TextTools::toString(node->getId());
+        //cout << bpp::TextTools::toString(node->getId())<< endl;
+    }    
+    speciesTree_recPhyloXML_format=speciesTree_recPhyloXML_format + "</name>\n";
+
+	for (int i=0; i< node->getNumberOfSons();i++)
+		speciesTree_recPhyloXML_format=speciesTree_recPhyloXML_format + MySpeciesTree::toRecPhyloXML(node->getSon(i));
+	speciesTree_recPhyloXML_format=speciesTree_recPhyloXML_format + "</clade>\n";
+
+	return speciesTree_recPhyloXML_format;
+};
+
 //WDF
 bool MySpeciesTree::isSubdivided()
 {
