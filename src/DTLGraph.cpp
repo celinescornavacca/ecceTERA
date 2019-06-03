@@ -2864,7 +2864,7 @@ string DTLGraph::getRecPhyloXMLReconciliation(
 			if(mSpeciesTree->getNodeById(lostSonX)->isLeaf())
 				idToPrintLoss=mSpeciesTree->getNodeById(lostSonX)->getName() ;
 			else
-				idToPrintLoss=bpp::TextTools::toString(mSpeciesTree->getNodeById(lostSonX)) ;
+				idToPrintLoss=bpp::TextTools::toString(mSpeciesTree->getNodeById(lostSonX)->getId()) ;
 			
 			geneTree_recPhyloXML_format = geneTree_recPhyloXML_format + idToPrintLoss;
 
