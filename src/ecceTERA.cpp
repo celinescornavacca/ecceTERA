@@ -2354,45 +2354,114 @@ int main(int args, char ** argv)
 			}
 
 			speciesNetwork->assignNetworkPostOrderIds();
-					
+		
 
 			vector<MySpeciesNode*> allNodes = speciesNetwork->getNodes();
-		
+			std::map<string,MySpeciesNode*> hybrids ;
+			vector<MySpeciesNode*> nodesToDelete ;
+			vector<MySpeciesNode*> parentsOfHybrids ;
 			string errStr;
-		
 
-				BOOST_FOREACH( MySpeciesNode *node, allNodes ) {
+			BOOST_FOREACH( MySpeciesNode *node, allNodes ) {
+				//cout << "id "<< node->getId() << endl;
 				int sonCount = node->getNumberOfSons();
 				if( sonCount > 2 ) {
 					errStr = "A network node has more than two children";
 					return false;
 				}
-				for( int i=0; i<sonCount; i++ ) {
-					MySpeciesNode *son = node->getSon( i );
-					if( son->hasName() && son->getName().find('#')!=std::string::npos && son->getInfos().primaryFather ==NULL){    
-						son->getInfos().primaryFather= son->getFather();
-					}	
-					if(son->getInfos().primaryFather !=NULL){
-						if( node->getId() != son->getInfos().primaryFather->getId() ) {
-							son->getInfos().secondaryFather =node;
-						}
+				if( node->hasName() && node->getName().find('#')!=std::string::npos &&  hybrids.find( node->getName()) ==hybrids.end()){    
+					node->getInfos().primaryFather= node->getFather();
+					hybrids.insert( make_pair(node->getName(), node) );
+					//cout << "primary "<< node->getId() << " "  << node->getInfos().primaryFather->getId() << "\n";	
+					parentsOfHybrids.push_back(node->getFather());
+					//cout << "added "<< node->getFather()->getId() << " to parentsOfHybrids "  << "\n";	
+
+				}	
+				else if( node->hasName() && node->getName().find('#')!=std::string::npos  &&  hybrids.find( node->getName()) !=hybrids.end()){
+					//cout << node->getName() << endl;
+					MySpeciesNode *otherNode =hybrids.find( node->getName())->second;
+					
+					if(std::find(parentsOfHybrids.begin(), parentsOfHybrids.end(), otherNode) != parentsOfHybrids.end()) {
+						//cout << "swap\n";
+						parentsOfHybrids.push_back(node->getFather());
+						//cout << "added "<< node->getFather()->getId() << " to parentsOfHybrids "  << "\n";	
+						MySpeciesNode * tempNode=node;
+						node=otherNode;
+						otherNode=tempNode;
+
 					}
+					else{
+						parentsOfHybrids.push_back(node->getFather());
+						//cout << "added "<< node->getFather()->getId() << " to parentsOfHybrids "  << "\n";	
+					}
+					
+					node->getInfos().primaryFather= node->getFather();
+					
+					//cout << otherNode->getName() << endl;
+
+					//cout << "secondary"<< node->getId() << " "  << node->getFather()->getId() << "\n";	
+
+					MySpeciesNode *father = otherNode->getFather();
+					node->getInfos().primaryFather= node->getFather();
+					node->getInfos().secondaryFather= otherNode->getFather();
+					//cout << "secondary "<< node->getId() << " " <<  node->getInfos().secondaryFather->getId()  << " " << node->getInfos().primaryFather->getId() << "\n";	
+
+					
+					if( otherNode->getNumberOfSons() > 2 ) {
+						errStr = "A network node has more than two children";
+						return false;
+					}
+					
+					//cout << "father " << father->getId() << "  " << father->getNumberOfSons() << "\n" ;
+					//cout << "otherNode " << otherNode->getId() << "  " << otherNode->getNumberOfSons() << "\n" ;
+					//cout << "node " << node->getId() << "  " << node->getNumberOfSons() << "\n" ;
+
+					
+					for( size_t i=0; i<otherNode->getNumberOfSons(); i++ ) {
+                		MySpeciesNode *son = otherNode->getSon(0);
+                		otherNode->removeSon(son);
+                		son->removeFather();
+                		node->addSon( son );
+						otherNode->getInfos().secondaryFather= NULL;
+						otherNode->getInfos().primaryFather = NULL;
+                	}
+                	father->addSon( node );
+					father->removeSon( otherNode );
+					
+					//cout << "father " << father->getId() << "  " << father->getNumberOfSons() << "\n" ;
+					//cout << "otherNode " << otherNode->getId() << "  " << otherNode->getNumberOfSons() << "\n" ;
+					//cout << "node " << node->getId() << "  " << node->getNumberOfSons() << "\n" ;
+
+
+					nodesToDelete.push_back(otherNode);
+  					//cout << "added "<< otherNode->getId() << " to nodesToDelete "  << "\n";	
+
+							
 				}
 
 			}
-			
-			
+			int size = nodesToDelete.size();
+			for(int i=0; i< size;i++ ) {
+				MySpeciesNode *node = nodesToDelete.back();
+				nodesToDelete.pop_back();
+				delete(node);	
+
+			}
+	
+			speciesNetwork->assignNetworkPostOrderIds();
+
 			// species tree must be binary, except for hybrid nodes (2 parents)
 			if( !speciesNetwork->checkNetwork( errStr ) ) {
 				cerr << "ERROR: Invalid species network: " << errStr << endl;
 				exit(1);
 			}
 
+
 			if( !speciesNetwork->checkNetwork( errStr ) ) {
 				cerr << "ERROR: second check failed. Invalid species network " << errStr << endl;
 				exit(1);
 			}
-	
+			
 	
 			
 			allNodes = speciesNetwork->getNodes();
@@ -2537,14 +2606,7 @@ int main(int args, char ** argv)
 							
 				        costMinSwitch = netAlg.runMinSwitch( numLosses, numDupli , numTransfers, edgesBestSwitchings );
 
-					/*cout << "=============BEST===========\n";  
 
-					for (int bs=0; bs < edgesBestSwitchings.size(); bs++){
-						cout << edgesBestSwitchings[bs].first << " "  << edgesBestSwitchings[bs].second << endl;
-					}
-					cout << "=============++++===========\n";  
-					*/
-				
 				
 				
 					//MyNetwork * bestSwitching = speciesNetwork ;
@@ -2630,27 +2692,6 @@ int main(int args, char ** argv)
 						//cout << "bestCostSwitching = " << bestCostSwitching << endl; 
 
 
-        				/*bestSwitching->printNetwork();
-
-
-                    	vector<MySpeciesNode*>  allNodesSwitching = bestSwitching->getNodes();
-				
-						BOOST_FOREACH( MySpeciesNode *node, allNodesSwitching ) {
-				
-						if(node->hasFather())
-							cout << node->getId() << " " << node->getFather()->getId() << endl;
-					
-						}
-					
-						//bestSwitching->makeBinarySwitching(bestSwitching->getRootNode(), true);
-
-						vector<int> changedTimeSlicesSwitching;
-
-						DTLMatrixNetwork *dtlMatrixSwitching = createAndRunMatrix( false, bestSwitching, cladesAndTripartitions, maxTS2, changedTimeSlicesSwitching, inEps );
-
-						double bestCostSwitching = dtlMatrixSwitching->getBestCost();	
-						cout << "bestCostSwitching = " << bestCostSwitching << endl; 
-						*/
 
 					
 
@@ -2661,10 +2702,12 @@ int main(int args, char ** argv)
 						bestSwitching->printNewick( pathName );
 						cout << "Best switching printed in file: " << pathName << endl;
 						
+						
+						/* ?? to needed because we count losses in a different way in LGT networks
 						if(bestCostSwitching!=costMinSwitch){
 							cout << "ERRROR WRONG SWITCHING COST " << bestCostSwitching << " " << costMinSwitch << endl;
 							return 0;
-						}
+						}*/
 						
 
                                         				
@@ -2673,16 +2716,7 @@ int main(int args, char ** argv)
                                         
 
 												
-					/*allNodesSwitching = bestSwitching->getNodes();
-				
-					BOOST_FOREACH( MySpeciesNode *node, allNodesSwitching ) {
-				
-						if(node->getNumberOfSons()==1)
-							cout << "problem binary A " << node->getId() << endl; // << " " << node->hasFather() << " " << node->getNumberOfSons() << endl;
-						else if(node->getNumberOfSons()==0 && (!( node->hasName()) || node->getName().find('#')!=std::string::npos ))
-							cout << "problem binary B " << node->getId() << endl;
-					
-					}*/
+
 				
 					cout << numLosses << " losses, " << numDupli
 						 << " duplications and " << numTransfers << " transfers" << endl;
@@ -2733,6 +2767,7 @@ int main(int args, char ** argv)
 
 					
 					double costMinRec = netAlg.runMinRecon();
+					
                     //netAlg.printRecon();
 					
 					if( gBoolParams.find("print.info")->second ) {
@@ -2746,11 +2781,11 @@ int main(int args, char ** argv)
                     
 
 					//CS to test the new implementation, but I am not sure because we do not count losses exactly the same way....
-					//cout << "cost old costMinRec= " << costMinRec << endl;
-				    //if(gDoubleParams.find("HGT.cost")->second==0 && (bestCost!=costMinRec)){
-                    //     cout << "ERRROR OLD AND NEW MIN COSTS ARE DIFFERENT " << bestCost << " " << costMinRec << endl;
-                    //     return 0;
-                    //}
+					cout << "cost old costMinRec (no HGT possible)= " << costMinRec << endl;
+				    if(gDoubleParams.find("HGT.cost")->second==0 && (bestCost!=costMinRec)){
+                         cout << "ERRROR OLD AND NEW MIN COSTS ARE DIFFERENT " << bestCost << " " << costMinRec << endl;
+                         //return 0;
+                    }
         
 	                                		
 
@@ -2767,6 +2802,8 @@ int main(int args, char ** argv)
 				//BOOST_FOREACH( MyGeneTree *tree, geneTrees ) 
 					delete geneTree;
 			}
+			
+			
 			delete speciesNetwork;    
 			 
 			

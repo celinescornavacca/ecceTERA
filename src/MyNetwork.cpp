@@ -280,19 +280,7 @@ MySpeciesNode *MyNetwork::handleNewickTag(
 {
     map<string,MySpeciesNode*>::iterator tagIter = tags.find( tag );
     //cout << "tag " << tag << endl;
-    if( tagIter == tags.end() ) {
-        // not found, add it
-        tags.insert( make_pair(tag, node) );
-    } else if( !isLeaf ) {
-        errString = "eNewick tag is not a leaf";
-        return NULL;
-    } else {
-    	//tagIter->second->getInfos().primaryFather =node->getInfos().primaryFather;
-        delete node;
-        node = tagIter->second;
-//        node->getInfos().setSecondaryEdge(toStore) ;
-    }
-
+	tags.insert( make_pair(tag, node) );
     return node;
 }
 
@@ -389,8 +377,8 @@ void MyNetwork::assignNetworkPostOrderIds()
     BOOST_FOREACH( MySpeciesNode *node, allNodes ) {
         mCorrespondence[id] = node;
         node->setId( id++ );
-    }
-
+     }
+     
 /* Breadth first
     int nodeCount = allNodes.size();
     vector<bool> seenIt( nodeCount, false );
@@ -590,7 +578,7 @@ vector<MySpeciesNode*> MyNetwork::getNodes()
         if( !node->getInfos().seenIt ) {
             node->getInfos().seenIt = true;
             nodes.push_back( node );
-            //cout << node->getInfos().getId() << endl;
+            //cout << node->getId() << endl;
         }
 
     return nodes;
@@ -617,6 +605,7 @@ bool MyNetwork::checkNetwork(
     boost::unordered_map<string,int> leafMap;
     int maxId = 0;
     BOOST_FOREACH( MySpeciesNode *node, allNodes ) {
+
         if( maxId < node->getId() )
             maxId = node->getId();
 
@@ -633,7 +622,7 @@ bool MyNetwork::checkNetwork(
                     return false;
                 }
                 otherParent[son->getId()] = node;
-                
+                //cout << "adding " << node->getId() << " as other parent of " << son->getId()<< endl; 
             }
         }
 	
@@ -643,20 +632,21 @@ bool MyNetwork::checkNetwork(
                 = leafMap.find( node->getName() );
             if ( iter == leafMap.end() ) 
                 leafMap.insert(std::pair<string,int>(node->getName(),0));
-            else {
+            else  if(node->getName()!="") {
                 errStr = "The species network does not have unique leaves.";
                 return false;
             }
         }
+
+        
     }
 
 
-	
     // check in-degree and out-degree
     bool changed = false;
     maxId++;
     BOOST_FOREACH( MySpeciesNode *node, allNodes ) {
-
+    	node->getInfos().seenIt = false;
         int sonCount = node->getNumberOfSons();
         if( !node->hasFather() ) {
             if( sonCount != 2 ) {
@@ -664,6 +654,9 @@ bool MyNetwork::checkNetwork(
                 return false;
             }
         } else if( node->getInfos().secondaryFather!=NULL && sonCount != 1 ){//otherParent[node->getId()] != NULL && sonCount != 1 ) { 
+            
+
+
             // add hybrid node if there is another parent and son count
             // is not one
             MySpeciesNode *newNode = new MySpeciesNode();
@@ -689,17 +682,50 @@ bool MyNetwork::checkNetwork(
         } else if(node->getInfos().secondaryFather==NULL && sonCount == 1){ //if( otherParent[node->getId()] == NULL && sonCount == 1 ) {
             // remove nodes with one parent and one son
             MySpeciesNode *father = node->getFather();
+            cout << father->getId() << " " <<  node->getId() << " " << node->getSon(0)->getId() << " " << endl;
+
+            
             father->removeSon( node );
+            //node->removeFather();
             father->addSon( node->getSon(0) );
             node->getSon(0)->getInfos().primaryFather  = node->getInfos().primaryFather;
          	node->getSon(0)->getInfos().secondaryFather  = node->getInfos().secondaryFather;
+            //cout << node->getSon(0)->getNumberOfSons() << endl;
+            //cout << node->getSon(0)->getInfos().secondaryFather << endl;
+
             delete node;
+
             changed = true;
         }
     }
+	
+	
+    vector<MySpeciesNode*> allNodesNew;
+    vector<MySpeciesNode*> curNodes;
+    MySpeciesNode *root = getRootNode();
+    root->getInfos().seenIt=true;
+    curNodes.push_back( root );
+    while( curNodes.size() > 0 ) {
+        vector<MySpeciesNode*> sons;
+        BOOST_FOREACH( MySpeciesNode *node, curNodes ) {
+            for( size_t i=0; i<node->getNumberOfSons(); i++ ) {
+                MySpeciesNode *son = node->getSon(i);
+                if( son->getInfos().seenIt == false ) {
+                    son->getInfos().seenIt = true;
+                    allNodes.push_back( son );
+                    sons.push_back( son );
+                }
+            }
+        }
+        curNodes = sons;
+    }
 
-    if( changed ) 
+
+		
+    if( changed ) {
         assignNetworkPostOrderIds();
+    	cout << "id changed";    
+    }
 	
     return true;
 }
