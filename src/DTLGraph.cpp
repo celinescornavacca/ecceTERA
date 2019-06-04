@@ -2774,35 +2774,41 @@ string DTLGraph::getRecPhyloXMLReconciliation(
 			} else {
 				name = mGraph.properties(v).name;
 				if( name[0] != 'O' )
-					break; // skip artificial nodes
+					break; // skip artificial nodes	
 			}
 		}
 		eventNumber++;
    
 		string idToPrint;
 	
-		string event = name.substr(0,2);
+		string event;
 		
-		//cout << "event " << event << endl;
+		if (name.size()>2 && name[2]=='D')
+			event = name.substr(0,3); //TFD TTD
+		else if (name.size()>3 && name[3]=='D')
+			event = name.substr(0,4); //TLFD TLTD
+		else
+			event = name.substr(0,2);
+	
 				
 		geneTree_recPhyloXML_format= geneTree_recPhyloXML_format + "<clade>\n<name>";
 	    
-		if(event=="C_" || event=="S_" || event=="D_" || event=="T_"){
+		if(event=="C_" || event=="S_" || event=="DD" || event=="D_" || event=="T_" || event=="TTD" || event=="TFD" ){
 			
         	if( isLeaf )
             	geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + mCladesTrips->mClades.getLeafName(idU) ;
        		else
-            	geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + bpp::TextTools::toString( cladeToPOrd[idU] ) ;       
+            	geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + bpp::TextTools::toString( cladeToPOrd[idU] ) ;   
+                           
 		}
-		else if (event=="SL"){
+		//else if (event=="SL"){
+		//	lossId ++;  
+		//	geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + event + bpp::TextTools::toString(lossId) + "_" + bpp::TextTools::toString(cladeToPOrd[idU]) + "_" + bpp::TextTools::toString(mSpeciesTree->getNodeById(mGraph.properties(mappingV).id_x)->getId()) ;
+		//	
+		//}
+		else if (event=="SL" || event=="TL" || event=="TLFD" || event=="TLTD"){
 			lossId ++;  
-			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "SL" + bpp::TextTools::toString(lossId) + "_" + bpp::TextTools::toString(cladeToPOrd[idU]) + "_" + bpp::TextTools::toString(mSpeciesTree->getNodeById(mGraph.properties(mappingV).id_x)->getId()) ;
-			
-		}
-		else if (event=="TL"){
-			lossId ++;  
-			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "TL" + bpp::TextTools::toString(lossId) + "_" + bpp::TextTools::toString(cladeToPOrd[idU]) + "_" + bpp::TextTools::toString(mSpeciesTree->getNodeById(mGraph.properties(mappingV).id_x)->getId()) ;
-			
+			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + event + "_" + bpp::TextTools::toString(lossId) + "_" + bpp::TextTools::toString(cladeToPOrd[idU]) + "_" + bpp::TextTools::toString(mSpeciesTree->getNodeById(mGraph.properties(mappingV).id_x)->getId()) ;	
 		}
 		
 		geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "</name>\n";
@@ -2820,18 +2826,35 @@ string DTLGraph::getRecPhyloXMLReconciliation(
 		int keptSonT =-1;
 		
 		if(idUP!=-1 && eventNumber==1){ // the previous event is associated to the parent of idU, ie idUP
-			previousEvent= mGraph.properties(reconciliation[idUP][ reconciliation[idUP].size()-1]).name.substr(0,2);
+			string namePreviousEvent = mGraph.properties(reconciliation[idUP][ reconciliation[idUP].size()-1]).name;
+			if (namePreviousEvent.size()>2 && namePreviousEvent[2]=='D')
+				previousEvent = namePreviousEvent.substr(0,3); //TFD TTD
+			else if (namePreviousEvent.size()>2 && namePreviousEvent[3]=='D')
+				previousEvent = namePreviousEvent.substr(0,4); //TLFD TLTD
+			else
+				previousEvent = namePreviousEvent.substr(0,2);
+			
 			keptSonT = mGraph.properties(reconciliation[idUP][reconciliation[idUP].size()-2]).id_x; 
 
 		}	
 		else if (reconciliationIdxMappingV-2 >=0){ // the previous event is associated to idU
-			previousEvent= mGraph.properties(reconciliation[idU][reconciliationIdxMappingV-1]).name.substr(0,2);
+			
+			string namePreviousEvent = mGraph.properties(reconciliation[idU][reconciliationIdxMappingV-1]).name;
+			if (namePreviousEvent[2]=='D')
+				previousEvent = namePreviousEvent.substr(0,3); //TFD TTD
+			else if (namePreviousEvent[3]=='D')
+				previousEvent = namePreviousEvent.substr(0,4); //TLFD TLTD
+			else
+				previousEvent = namePreviousEvent.substr(0,2);	
 		}
-
-		if(previousEvent=="TL"  ||  (previousEvent=="T_" && mGraph.properties(mappingV).id_x != keptSonT) ){// in TL, the keptSon is always id_x while in T is the sibling of the keptOne
+		
+		if(previousEvent=="TL"  || previousEvent=="TLFD"  || event=="TLTD" || ((previousEvent=="T_" || previousEvent=="TTD" || previousEvent=="TFD") && mGraph.properties(mappingV).id_x != keptSonT) ){// in TL, the keptSon is always id_x while in T is the sibling of the keptOne
 			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<transferBack destinationSpecies=\""  + idToPrint + "\"></transferBack>\n";
 		}	
 			
+		
+		//cout << "previousEvent " << previousEvent << endl;
+	
 				 		
 		 if(event=="C_" ){
 			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<leaf speciesLocation=\"" + idToPrint + "\" geneName=\"" +mCladesTrips->mClades.getLeafName(idU)  + "\"></leaf>";
@@ -2839,16 +2862,16 @@ string DTLGraph::getRecPhyloXMLReconciliation(
 		 else if(event=="S_" || event=="SL"){
 			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<speciation speciesLocation=\""  + idToPrint + "\"></speciation>";
 		}
-		 else if(event=="D_"){
+		 else if(event=="D_" || event=="DD"){
 			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<duplication speciesLocation=\""  + idToPrint + "\"></duplication>";
 		}
-		else if(event=="T_" || event=="TL"){
+		else if(event=="T_" || event=="TL" || event=="TTD" || event=="TFD" || event=="TLTD" || event=="TLFD"){
 			geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "<branchingOut speciesLocation=\""  + idToPrint + "\"></branchingOut>";
 		}
 		
 		geneTree_recPhyloXML_format=geneTree_recPhyloXML_format + "\n</eventsRec>\n";
 		
-		 if(event=="SL" || event=="TL" ){ // add the loss
+		 if(event=="SL" || event=="TL" || event=="TLFD" || event=="TLTD" ){ // add the loss
 			int lostSonX =-1;
 		 	if(event=="SL" ){
 				MyGraph::Vertex vNext = reconciliation[idU][reconciliationIdxMappingV+2];

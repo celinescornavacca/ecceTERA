@@ -1027,7 +1027,7 @@ void MySpeciesTree::addAlphaForDeadTransfer(
     newRootS->getInfos().isAlpha = false;
 
     mAlpha = new MySpeciesNode();
-    mAlpha->setName("OUTGROUP");
+    mAlpha->setName("UNSAMPLED");
 //    mAlpha->getInfos().WGD = false;
     mAlpha->getInfos().isAlpha = true;
     mAlpha->getInfos().duplicationCost = 0;
