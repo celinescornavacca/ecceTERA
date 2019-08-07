@@ -386,10 +386,9 @@ void Clades::mapSpeciesNames(
     for( size_t i=0; i<geneNames.size(); i++ ) {
         string leafName = geneNames[i];
 
-        // check for duplicates
         boost::unordered_map<string,int>::const_iterator iter = 
                                             mLeafClades.find( leafName ); 
-        if( iter == mLeafClades.end() ) {
+        if( iter != mLeafClades.end() ) {
             // found it
             int cladeId = iter->second;
             if( mSpeciesNameMapping[cladeId] == "" ) {
@@ -402,7 +401,7 @@ void Clades::mapSpeciesNames(
         } 
     }
 
-    if( addedCount != mLabelCount )
+    if( (addedCount+1) != mLabelCount )
         errStr = "Missing gene name mapppings";
 }
 

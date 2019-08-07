@@ -849,12 +849,13 @@ void readGeneMappingFile(
         string temp;
         // Copy current line to temporary string
         getline(fileStream, temp, '\n');  
+        if( temp == "" ) // blank line
+            continue;
 
         boost::char_separator<char> sep(" ");
         Tokenizer tok( temp, sep );
         Tokenizer::iterator iter=tok.begin();
-        if( *iter == "" ) // blank line
-            continue;
+
         geneNames.push_back( *iter );
         iter++;
         if( iter==tok.end() ) {
