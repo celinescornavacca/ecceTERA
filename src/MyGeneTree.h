@@ -87,7 +87,7 @@ public:
     bool reroot( vector<string> &outGroup, int proportion );
     bool rootWithThreshold( float threshold, int mode );
 
-    bool restrictTreeToASetOfTaxa( boost::unordered_map<string,int> &taxaNames,
+    bool restrictTreeToASetOfTaxa( boost::unordered_map<string,int> &taxaNames , boost::unordered_map<string, string> &mapNames,
                                    char charSep='x', bool verbose=false );
 
     static vector<MyGeneTree*> readMyGeneTrees( const char *treePathChar,

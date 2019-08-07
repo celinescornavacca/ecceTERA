@@ -309,19 +309,27 @@ bool MyGeneTree::rootWithThreshold(
 bool MyGeneTree::restrictTreeToASetOfTaxa(
          boost::unordered_map<string,int> &taxaNames, 
             ///< map of leaf names
+    	 boost::unordered_map<string, string> &mapNames,  //map for gene and species name 
          char charSep, ///< character seperator for leaf names
-         bool verbose ) ///< print debugging info
+         bool verbose  ///< print debugging info
+    )  
 {
     bool hasLeaves = true;
+
 
     vector <MyGeneNode *> leaves = getLeaves();
     BOOST_FOREACH( MyGeneNode *leaf, leaves ) {
 
         string name = leaf->getName();
-        if( charSep != 'x' ) {
-            // extract the gene name (part before seperator)         
-            size_t pos = name.find(charSep); 
-            name = name.substr(0,pos);
+        if(mapNames.empty()){ // no map provided, we use charSep
+        	if( charSep != 'x' ) {
+        	    // extract the gene name (part before seperator)         
+         	   size_t pos = name.find(charSep); 
+          	  name = name.substr(0,pos);
+        	}
+        }
+        else{
+        	name=mapNames.find(name)->second;     	
         }
 
         boost::unordered_map<string,int>::iterator iter 

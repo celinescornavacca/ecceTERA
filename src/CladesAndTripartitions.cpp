@@ -391,17 +391,20 @@ void Clades::mapSpeciesNames(
         if( iter != mLeafClades.end() ) {
             // found it
             int cladeId = iter->second;
-            if( mSpeciesNameMapping[cladeId] == "" ) {
-                mSpeciesNameMapping[cladeId] = speciesNames[i];
-                addedCount++;
-            } else if( mSpeciesNameMapping[cladeId] != speciesNames[i] ) {
-                errStr = "Inconsistent names";
-                return;
-            } 
+            //if( mSpeciesNameMapping[cladeId] == "" ) {
+            mSpeciesNameMapping[cladeId] = speciesNames[i];
+            addedCount++;
+            // there was a bug here, we want to overload the species names associated to the gene anyway...
+            // the one we start with are simply the names of the genes....
+           // } else if( mSpeciesNameMapping[cladeId] != speciesNames[i] ) {
+           //		cout << mSpeciesNameMapping[cladeId] << " " << speciesNames[i] << endl;
+           //     errStr = "Inconsistent names";
+           //     return;
+           // } 
         } 
     }
 
-    if( (addedCount+1) != mLabelCount )
+    if( addedCount != mLabelCount )
         errStr = "Missing gene name mapppings";
 }
 

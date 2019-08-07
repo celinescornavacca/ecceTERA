@@ -2125,12 +2125,14 @@ bool checkGeneTree(
         int counter, ///< counter for gene tree
         MyGeneTree *&geneTree, ///< gene tree to check
         MyGeneTree *&bootstrapGeneTree, ///< gene tree with bootstrap values
-        boost::unordered_map<string, int> &taxaNamesSpecies ) ///< specie names
+        boost::unordered_map<string, int> &taxaNamesSpecies,  ///< specie names
+        boost::unordered_map<string, string> &mapNames //map for gene and species name 
+        ) 
 {
     if( !geneTree->restrictTreeToASetOfTaxa( 
-                taxaNamesSpecies, 
+                taxaNamesSpecies, mapNames,
                 gStringParams.find("char.sep")->second[0], 
-                gBoolParams.find("verbose")->second ) ) 
+                gBoolParams.find("verbose")->second) ) 
     {
         cerr << "ERROR: Gene tree " << counter
              << " has no valid leaves." << endl;
@@ -2221,6 +2223,47 @@ int main(int args, char ** argv)
 
         if( gBoolParams.find("verbose")->second ) 
             bpp::ApplicationTools::startTimer();
+            
+		boost::unordered_map<string, string> mapNames; //map for gene and species name 
+
+		
+		if( gStringParams.find("gene.mapping.file")->second != "none" ) {
+			const char *mappingFileName  = gStringParams.find("gene.mapping.file")->second.c_str();
+
+			ifstream fileStream( mappingFileName, ios::in );  
+			if( !fileStream) { 
+				cerr << "Failed to open file: "
+					<< gStringParams.find("gene.mapping.file")->second << endl;
+				exit(1);
+			}
+
+			string description;
+	
+			while( !fileStream.eof() ) {
+				string temp;
+				// Copy current line to temporary string
+				getline(fileStream, temp, '\n');  
+				if( temp == "" ) // blank line
+					continue;
+
+				boost::char_separator<char> sep(" ");
+				Tokenizer tok( temp, sep );
+				Tokenizer::iterator iter=tok.begin();
+
+				string geneName =  *iter;
+				iter++;
+				if( iter==tok.end() ) {
+					cerr << "Invalid line, missing species name in "
+						<< gStringParams.find("gene.mapping.file")->second << endl;
+					exit( 1 );
+				}
+				string speciesName =  *iter;
+	
+				mapNames.insert( make_pair(geneName,speciesName) );
+					
+			}
+
+		}
 
 		if(! gBoolParams.find("input.network")->second ){
 			// read the species tree
@@ -2230,6 +2273,8 @@ int main(int args, char ** argv)
 				cerr << "Error: species tree has less than 2 leaves\n";
 				exit(1);
 			}		
+			
+
 
 			// map of taxaNames required for the function restrictTreeToASetOfTaxa
 			boost::unordered_map<string, int> taxaNamesSpecies;
@@ -2269,7 +2314,7 @@ int main(int args, char ** argv)
 
 				MyGeneTree *bootstrapGeneTree = NULL;
 				if( !checkGeneTree( counter, geneTrees[i], bootstrapGeneTree,
-									taxaNamesSpecies ) )
+									taxaNamesSpecies, mapNames ) )
 					continue; //ship these gene trees 
 		        if(geneTrees[i]->getNumberOfLeaves()<=1){
 		             cout << "Gene tree number " << i+1 << ", once restricted to the species present in the species "
@@ -2529,8 +2574,8 @@ int main(int args, char ** argv)
 				//////////////////////////////////////////////////////////
 		
 				if( !geneTree->restrictTreeToASetOfTaxa( 
-					taxaNamesSpecies, gStringParams.find("char.sep")->second[0],
-					gBoolParams.find("verbose")->second )  )
+					taxaNamesSpecies, mapNames, gStringParams.find("char.sep")->second[0],
+					gBoolParams.find("verbose")->second ))
 				{
 					cerr << "ERROR: Gene tree has no valid leaves." << endl;
 					exit(1);
