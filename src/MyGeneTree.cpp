@@ -281,15 +281,22 @@ bool MyGeneTree::rootWithThreshold(
     } else {
         // no node above threshold, root and add an outgroup
         rootTree(); // roots tree if unrooted
-
-        MyGeneNode *newRoot = new MyGeneNode(); 
+			
+		// CS: I removed the following lines the 20/08/2019 because they gave a bug when 
+		// the gene.mapping.file was specified since the new leaf was not associated to any 
+		// species. Also, since no distance nor bootstrap value was added for the taxon outgroup,
+		// Edwin's code was not doing what it is was supposed to do since the outgroup branch
+		// was always collapsed at the collapseOnTree stage. And thus, the root was a polytomy
+		// in any case,  after collapseOnTree, and the code worked just fine.
+		
+        /*MyGeneNode *newRoot = new MyGeneNode(); 
         MyGeneNode *outGroup = new MyGeneNode(); 
         outGroup->setName( "outgroup" );
         
         newRoot->addSon( getRootNode() );
         newRoot->addSon( outGroup );
 
-        setRootNode( newRoot ); 
+        setRootNode( newRoot ); */
     }
 
 

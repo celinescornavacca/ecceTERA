@@ -1767,17 +1767,11 @@ void collapseTree(
             }
             if( bootstrapGeneTree == NULL )
                 bootstrapGeneTree = new MyGeneTree( *geneTree );
-        }
-        
-
-
-
-        
+        }  
         
         // collapse tree to make it polytomic
         maxDegree = geneTree->collapseOnTree( threshold, 
                                 gIntParams.find("collapse.mode")->second );
-        
                        
         usedThreshold = threshold;
         numberOfTrees = CladesAndTripartitions::findPolytomies( 
@@ -2295,6 +2289,7 @@ int main(int args, char ** argv)
 				geneTrees = MyGeneTree::readMyGeneTrees( 
 					  gStringParams.find("gene.file")->second.c_str(), errString,
 					  readBootstrap );
+								  
 				if( errString != "" ) {
 					cerr << "Error reading gene trees: " << errString << endl;
 					exit(1);
