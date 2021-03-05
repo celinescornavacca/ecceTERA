@@ -72,7 +72,7 @@ MySpeciesTree::MySpeciesTree(
         bool bootstrap ) ///< names are bootstrap values
     : MyTreeTemplate<MySpeciesNode>(), mHasAlpha(false), mSubdivision(false)
 {
-    readTree( description, errString, false, bootstrap );
+    readTree( description, errString, bootstrap );
 
     if( bootstrap && !checkBootstrapValues() ) 
         errString = "Bootstrap values incorrectly ordered.";

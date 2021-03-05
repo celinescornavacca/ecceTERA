@@ -69,13 +69,8 @@ public:
     double hgtCost;     ///< node specific transfer cost
     double lossCost;    ///< node specific loss cost
 
-    // for network
-    bool seenIt;
-	MySpeciesNode *primaryFather;
-    MySpeciesNode *secondaryFather; //TO DO: Use this instead of otherParent...
-
     NodeInfos() : //WGD(false), 
-        isAlpha(false), primaryFather(NULL), secondaryFather(NULL) {}
+        isAlpha(false) {}
 };
 typedef bpp::NodeTemplate<NodeInfos> MySpeciesNode;
 

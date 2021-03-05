@@ -78,7 +78,7 @@ public:
         bool readBootstrap=false ) ///< read bootstrap values
         : MyTreeTemplate<MyGeneNode>()
     {
-        readTree( description, errString, false, readBootstrap );
+        readTree( description, errString, readBootstrap );
     }
 
     void assignPostOrderIds();
@@ -92,9 +92,6 @@ public:
 
     static vector<MyGeneTree*> readMyGeneTrees( const char *treePathChar,
                                 string &errString, bool readBoostrap=false );
-
-    MyGeneTree* switching( MyGeneNode *root,
-                           const int biCompId, const vector<int> &biCompMap );
 
 
 };	

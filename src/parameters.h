@@ -59,7 +59,7 @@ std::map<string,string> gStringParams; // string, char, and path
 
 // Ordered for the help message.
 // Parameters with an empty description are not displayed in the help.
-const int gParameterCount = 83; // This must matche the size of gParameters
+const int gParameterCount = 78; // This must matche the size of gParameters
 string const gParameters[gParameterCount][4] = {
 // basic options
  {"species.file", "path", "required", "species tree file (newick)" },
@@ -163,13 +163,6 @@ string const gParameters[gParameterCount][4] = {
  {"ils.max.cluster.size", "int", "15", ""},
      //"maximum size of an ils cluster (abort if exceeded)"},
 
-//netTERA
-{"input.network", "bool", "false", "The input species phylogeny is a network (in extended newick)"},
-{"best.switch", "bool", "true", "Run minimum switching algorithm"},
-{"min.recon", "bool", "false", "Run minimum network reconciliation algorithm"},
- {"print.newick.best.switching.file", "string", "bestSwitching", 
-    "file name for the printed species switching"}, 
-   
    
  // hidden
  {"weighted.support", "bool", "false", ""}, //"use weighted event support)"},
@@ -183,9 +176,6 @@ string const gParameters[gParameterCount][4] = {
  //    //"maximum number of possible polytomic trees (0=no limit)"},
  {"print.clade.info", "bool", "false", ""},
      //"output clade and tripartition information"},
- {"run.brute", "bool", "false", ""}, 
- //Run brute minimum switching algorithm
-
 
  // Utility options
  {"print.matrix.file", "string", "none", ""}, //"file for output matrix"}, 
@@ -218,7 +208,6 @@ string const gParameters[gParameterCount][4] = {
 
 
  // TO DEPRECATE
- {"eNewick", "bool", "false", ""}, //"allow eNewick trees)"},
  {"hali", "bool", "false", ""}, // "output reconciliations in Hali's format"},
  {"extension.id", "string", "", ""}, // "ID added to the end of file"}
 };

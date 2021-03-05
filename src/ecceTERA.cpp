@@ -61,9 +61,6 @@ knowledge of the CeCILL license and that you accept its terms.
 #include "DTLMatrixRecalc.h"
 #include "DTLGraph.h"
 #include <Bpp/Phyl/Io/Newick.h>
-#include "MyNetwork.h"
-#include "NetAlg.h"
-#include "DTLMatrixNetwork.h"
 #include "parameters.h"
 
 			
@@ -340,58 +337,6 @@ CladesAndTripartitions *getCladesAndTripartitions(
 
     return cladesAndTripartitions;
 }
-/**
- * Create matrix and run it.
- */
-DTLMatrixNetwork *createAndRunMatrix(
-        bool returnTree,  ///< return backtrack gene tree
-        MyNetwork *speciesTree, ///< species tree
-        CladesAndTripartitions *cladesAndTripartitions, ///< gene clades
-        int maxTS,  ///< maximum time slice
-        vector<int> &changedTimeSlices, ///< list of changed time slices
-        double &inEps ) ///< suboptimal epsilon value used
-{
-    inEps = 0;
-    DTLMatrixNetwork *dtlMatrix = NULL;
-
-        // record best splits if needed later
-	bool useBestSplits = false;
-	if( gBoolParams.find("verbose")->second 
-		|| gBoolParams.find("print.newick")->second
-		|| gStringParams.find("print.reroot.file")->second != "none" 
-		|| returnTree )
-	{
-		useBestSplits = true; // required to print event counts or newick
-	}
-
-	// Create matrix
-		dtlMatrix = new DTLMatrixNetwork( speciesTree, 
-				cladesAndTripartitions, 
-				gDoubleParams.find("WGD.cost")->second, 
-				gFixedCosts,
-				gBoolParams.find("compute.T")->second, 
-				gBoolParams.find("compute.TL")->second, 
-				gDoubleParams.find("dupli.cost")->second, 
-				gDoubleParams.find("HGT.cost")->second, 
-				gDoubleParams.find("loss.cost")->second, 
-				maxTS, 
-				gDoubleParams.find("weight.amalgamation")->second, 
-				useBestSplits,
-				gDoubleParams.find("ils.cost")->second );
-
-	// run calculation
-	dtlMatrix->calculateMatrix( 
-			gBoolParams.find("verbose")->second, 
-			gIntParams.find("max.iterations")->second, 
-			gBoolParams.find("fix.dtl.costs")->second,
-			false );
-
-
-    printMemory( "Matrix" );
-
-    return dtlMatrix;
-}
-
 
 /**
  * Create matrix and run it.
@@ -1633,599 +1578,130 @@ int main(int args, char ** argv)
 
 		}
 
-		if(! gBoolParams.find("input.network")->second ){
-			// read the species tree
-			MySpeciesTree *speciesTree = getSpeciesTree();
-			
-			if( speciesTree->getNumberOfLeaves()<=1) {
-				cerr << "Error: species tree has less than 2 leaves\n";
-				exit(1);
-			}		
-			
-
-
-			// map of taxaNames required for the function restrictTreeToASetOfTaxa
-			boost::unordered_map<string, int> taxaNamesSpecies;
-			vector<string> leaves = speciesTree->getLeavesNames();
-			BOOST_FOREACH( string leaf, leaves) 
-				taxaNamesSpecies.insert(make_pair(leaf,1));
-
-			//read the gene trees
-			string errString = "";
-			vector<MyGeneTree*> geneTrees;
-			if( !gBoolParams.find("ale")->second ) {
-				bool readBootstrap = false;
-				if( gIntParams.find("collapse.mode")->second == 1 
-					|| gBoolParams.find("use.bootstrap.weighting")->second ) 
-				{
-					readBootstrap = true;
-				}
-				geneTrees = MyGeneTree::readMyGeneTrees( 
-					  gStringParams.find("gene.file")->second.c_str(), errString,
-					  readBootstrap );
-								  
-				if( errString != "" ) {
-					cerr << "Error reading gene trees: " << errString << endl;
-					exit(1);
-				}
-				if( gBoolParams.find("verbose")->second ) 
-					cout << geneTrees.size() << " gene trees" << endl;
-			}
-
-			// process the species tree
-			vector<int> changedTimeSlices;
-			int maxTS = processSpeciesTree( speciesTree, geneTrees, 
-											changedTimeSlices );
-			// Gene trees loop
-			int counter = 0;
-			for( size_t i=0; i<geneTrees.size(); i++ ) {
-				counter++;
-
-				MyGeneTree *bootstrapGeneTree = NULL;
-				if( !checkGeneTree( counter, geneTrees[i], bootstrapGeneTree,
-									taxaNamesSpecies, mapNames ) )
-					continue; //ship these gene trees 
-		        if(geneTrees[i]->getNumberOfLeaves()<=1){
-		             cout << "Gene tree number " << i+1 << ", once restricted to the species present in the species "
-		             << "tree, has only one leaf, skipped\n";
-		            continue;
-		        }
-		        
-				// do each tree individually if this isn't an amalgamation
-				if( !gBoolParams.find("amalgamate")->second ) {
-					vector<MyGeneTree*> singleGeneTree;
-					singleGeneTree.push_back( geneTrees[i] );
-					if( gBoolParams.find("verbose")->second )
-						cout << "Gene tree " << counter << endl;
-
-					bool backtrackTree = false; // run backtrack tree
-					bool constructGraph = gBoolParams.find("print.info")->second;
-					if( gIntParams.find("resolve.trees")->second  != -1
-						&& gBoolParams.find("print.info")->second ) 
-					{
-						backtrackTree = true;
-						constructGraph = false;  // not this time, after
-					}
-
-					// run the calculations
-					if( geneTrees.size() == 1 )
-						counter = 0; // don't add extension
-					run( false, speciesTree, singleGeneTree, maxTS, 
-						 changedTimeSlices, counter, constructGraph, 
-						 backtrackTree, true, bootstrapGeneTree );
-					if( gBoolParams.find("verbose")->second )
-						cout << endl; // add a gap in output
-				}
-
-				if( bootstrapGeneTree != NULL )
-					delete bootstrapGeneTree;
-			}
-
-			if( !gBoolParams.find("ale")->second && geneTrees.size() == 0 ) {
-				cout << "No gene trees found." << endl;
-				exit(1);
-			}
-
-			if( gBoolParams.find("verbose")->second ) 
-				bpp::ApplicationTools::displayTime("Reading the gene trees done:");
-
-			if( gBoolParams.find("print.support")->second ) {
-				// print clade support and exit 
-				printCladeSupport( geneTrees );
-				return 0;
-			} 
-
-		
-			// run the amalgamation
-			if( gBoolParams.find("amalgamate")->second ) {
-				run( true, speciesTree, geneTrees, maxTS, 
-					   changedTimeSlices, 0, false, 
-					   gBoolParams.find("print.info")->second );
-			}
-
-			// print a species file with post order ids 
-			if( gBoolParams.find("print.newick")->second ) {
-				string pathName = gPathPrefix + 
-					gStringParams.find("print.newick.species.tree.file")->second;
-				MySpeciesTree *tree = speciesTree->getPostorderTree();
-				tree->printNewick( pathName );
-				delete tree;
-			}
-		
-			// clean up
-			BOOST_FOREACH( MyGeneTree *tree, geneTrees ) 
-				delete tree;
-			delete speciesTree;
-		}
-		else{
-			// read species tree
-			string errString = "";
-			MyNetwork* speciesNetwork = MyNetwork::readMyNetwork( 
-					gStringParams.find("species.file")->second.c_str(),
-										 errString );
-			if( errString != "" || speciesNetwork == NULL ) {
-				cerr << "Error reading species network: " << errString << endl;
-				exit(1);
-			}
-
-			speciesNetwork->assignNetworkPostOrderIds();
-		
-
-			vector<MySpeciesNode*> allNodes = speciesNetwork->getNodes();
-			std::map<string,MySpeciesNode*> hybrids ;
-			vector<MySpeciesNode*> nodesToDelete ;
-			vector<MySpeciesNode*> parentsOfHybrids ;
-			string errStr;
-
-			BOOST_FOREACH( MySpeciesNode *node, allNodes ) {
-				//cout << "id "<< node->getId() << endl;
-				int sonCount = node->getNumberOfSons();
-				if( sonCount > 2 ) {
-					errStr = "A network node has more than two children";
-					return false;
-				}
-				if( node->hasName() && node->getName().find('#')!=std::string::npos &&  hybrids.find( node->getName()) ==hybrids.end()){    
-					node->getInfos().primaryFather= node->getFather();
-					hybrids.insert( make_pair(node->getName(), node) );
-					//cout << "primary "<< node->getId() << " "  << node->getInfos().primaryFather->getId() << "\n";	
-					parentsOfHybrids.push_back(node->getFather());
-					//cout << "added "<< node->getFather()->getId() << " to parentsOfHybrids "  << "\n";	
-
-				}	
-				else if( node->hasName() && node->getName().find('#')!=std::string::npos  &&  hybrids.find( node->getName()) !=hybrids.end()){
-					//cout << node->getName() << endl;
-					MySpeciesNode *otherNode =hybrids.find( node->getName())->second;
-					
-					if(std::find(parentsOfHybrids.begin(), parentsOfHybrids.end(), otherNode) != parentsOfHybrids.end()) {
-						//cout << "swap\n";
-						parentsOfHybrids.push_back(node->getFather());
-						//cout << "added "<< node->getFather()->getId() << " to parentsOfHybrids "  << "\n";	
-						MySpeciesNode * tempNode=node;
-						node=otherNode;
-						otherNode=tempNode;
-
-					}
-					else{
-						parentsOfHybrids.push_back(node->getFather());
-						//cout << "added "<< node->getFather()->getId() << " to parentsOfHybrids "  << "\n";	
-					}
-					
-					node->getInfos().primaryFather= node->getFather();
-					
-					//cout << otherNode->getName() << endl;
-
-					//cout << "secondary"<< node->getId() << " "  << node->getFather()->getId() << "\n";	
-
-					MySpeciesNode *father = otherNode->getFather();
-					node->getInfos().primaryFather= node->getFather();
-					node->getInfos().secondaryFather= otherNode->getFather();
-					//cout << "secondary "<< node->getId() << " " <<  node->getInfos().secondaryFather->getId()  << " " << node->getInfos().primaryFather->getId() << "\n";	
-
-					
-					if( otherNode->getNumberOfSons() > 2 ) {
-						errStr = "A network node has more than two children";
-						return false;
-					}
-					
-					//cout << "father " << father->getId() << "  " << father->getNumberOfSons() << "\n" ;
-					//cout << "otherNode " << otherNode->getId() << "  " << otherNode->getNumberOfSons() << "\n" ;
-					//cout << "node " << node->getId() << "  " << node->getNumberOfSons() << "\n" ;
-
-					
-					for( size_t i=0; i<otherNode->getNumberOfSons(); i++ ) {
-                		MySpeciesNode *son = otherNode->getSon(0);
-                		otherNode->removeSon(son);
-                		son->removeFather();
-                		node->addSon( son );
-						otherNode->getInfos().secondaryFather= NULL;
-						otherNode->getInfos().primaryFather = NULL;
-                	}
-                	father->addSon( node );
-					father->removeSon( otherNode );
-					
-					//cout << "father " << father->getId() << "  " << father->getNumberOfSons() << "\n" ;
-					//cout << "otherNode " << otherNode->getId() << "  " << otherNode->getNumberOfSons() << "\n" ;
-					//cout << "node " << node->getId() << "  " << node->getNumberOfSons() << "\n" ;
-
-
-					nodesToDelete.push_back(otherNode);
-  					//cout << "added "<< otherNode->getId() << " to nodesToDelete "  << "\n";	
-
-							
-				}
-
-			}
-			int size = nodesToDelete.size();
-			for(int i=0; i< size;i++ ) {
-				MySpeciesNode *node = nodesToDelete.back();
-				nodesToDelete.pop_back();
-				delete(node);	
-
-			}
-	
-			speciesNetwork->assignNetworkPostOrderIds();
-
-			// species tree must be binary, except for hybrid nodes (2 parents)
-			if( !speciesNetwork->checkNetwork( errStr ) ) {
-				cerr << "ERROR: Invalid species network: " << errStr << endl;
-				exit(1);
-			}
-
-
-			if( !speciesNetwork->checkNetwork( errStr ) ) {
-				cerr << "ERROR: second check failed. Invalid species network " << errStr << endl;
-				exit(1);
-			}
-			
-	
-			
-			allNodes = speciesNetwork->getNodes();
-			
-					BOOST_FOREACH( MySpeciesNode *node, allNodes ) {
-				int sonCount = node->getNumberOfSons();
-			for( int i=0; i<sonCount; i++ ) {
-					MySpeciesNode *son = node->getSon( i );
-					if(son->getInfos().primaryFather !=NULL){
-						if( node->getId() != son->getInfos().primaryFather->getId() ) {
-							//cout << "reticulation 2\n";
-						}
-					}
-				}
-
-			}
-			
-			
-
-			// map of taxaNames required for the function restrictTreeToASetOfTaxa
-			boost::unordered_map<string, int> taxaNamesSpecies;
-			vector<string> leafNames = speciesNetwork->getLeavesNames();
-			BOOST_FOREACH( string leafName, leafNames ) {
-				size_t pos = leafName.find( "#" ); 
-				leafName = leafName.substr(0,pos);
-				taxaNamesSpecies.insert( make_pair(leafName,1) );
-			}
-
-
-			//reading the gene trees 
-			vector<MyGeneTree*> geneTrees = MyGeneTree::readMyGeneTrees(
-							gStringParams.find("gene.file")->second.c_str(),
-							errString );
-			if( errString != "" ) {
-				cerr << "Error reading gene trees: " << errString << endl;
-				exit(1);
-			}
-			if( geneTrees.size() < 1 ) {
-				cerr << "No gene trees found" << endl;
-				exit(1);
-			}
-			
-			int maxTS =0;
-			int g=0;
-			
-			BOOST_FOREACH( MyGeneTree *geneTree, geneTrees ) {
-				g++;
-				cout << "Gene " << g << endl;
-
-
-				
-				if(g==1){
-					maxTS =speciesNetwork->assignNetworkPostOrderIdsDFS() -1;
-	        		speciesNetwork->compute_RealPostOrder();  //needed?
-	        		//allNodes = speciesNetwork->getNodes();
-					//BOOST_FOREACH( MySpeciesNode *node, allNodes ) { 
-					// 	cout << node->getInfos().realPostOrder << " " << node->getId() << endl; 
-					// }
-				}
-
-
-				//////////////////////////////////////////////////////////
-				// Gene trees
-				//////////////////////////////////////////////////////////
-		
-				if( !geneTree->restrictTreeToASetOfTaxa( 
-					taxaNamesSpecies, mapNames, gStringParams.find("char.sep")->second[0],
-					gBoolParams.find("verbose")->second ))
-				{
-					cerr << "ERROR: Gene tree has no valid leaves." << endl;
-					exit(1);
-				}
-
-		// Is there a limit?
-				// needed by the algoritm!!!	
-				if( geneTree->getNumberOfLeaves()<3 ) {
-					cerr << "ERROR: Gene tree has only " 
-						 << geneTree->getNumberOfLeaves()
-						 << " leaves. At least three are required." << endl;
-					exit(1);
-				}
-
-				if( !geneTree->isBinary() ) {
-					if( gBoolParams.find("force.binary")->second )
-						geneTree->makeBinary();
-					else {
-						cerr << "ERROR: Gene tree is not binary." << endl;
-
-						vector<MyGeneNode*> nodes = geneTree->getNodes();		
-						for( size_t i=0; i<nodes.size(); i++ ) {
-							if( !nodes[i]->isLeaf() && nodes[i]->getNumberOfSons() != 2 ) { 
-								cout << nodes[i]->getNumberOfSons() << endl;
-							}    
-						}
-
-						exit(1);
-					}
-				}
-
-				// gene trees must have unique leaves
-				string dupName;
-				if( !geneTree->uniqueLeaves( dupName ) ) {
-					cerr << "ERROR: A gene tree has duplicate leaf names: <" 
-						 << dupName << ">" << endl;
-					exit(1);
-				}
-
-				NetAlg netAlg( speciesNetwork, geneTree,
-							   gStringParams.find("char.sep")->second[0],
-							   gDoubleParams.find("dupli.cost")->second,
-							   gDoubleParams.find("loss.cost")->second,
-							   gDoubleParams.find("HGT.cost")->second );
-					   
-
-		
-		
-		    double cost =-1;
-			double costMinSwitch=-1;
-			MyNetwork * bestSwitching = NULL;
-		    	
-				if( gBoolParams.find("run.brute")->second ) {
-					cout << "======== BRUTE ALG====== " << endl;
-					int numLosses = 0;
-					int numDupli = 0;
-					int numTransfers= 0;
-
-					cost = netAlg.runBrute( numLosses, numDupli, numTransfers);        
-								
-					cout << numLosses << " losses, " << numDupli
-						 << " duplications and " << numTransfers << " transfers" << endl;
-					cout << "cost = " << cost << endl;
-				}
-
-				if( gBoolParams.find("best.switch")->second ) {
-					cout << "===============SWITCH ALG============" << endl;
-
-					int numLosses = 0;
-					int numDupli = 0;
-					int numTransfers= 0;
-				
-					vector<std::pair <int,int> > edgesBestSwitchings;
-							
-				        costMinSwitch = netAlg.runMinSwitch( numLosses, numDupli , numTransfers, edgesBestSwitchings );
-
-
-				
-				
-					//MyNetwork * bestSwitching = speciesNetwork ;
-			 
-					bestSwitching = new MyNetwork( * speciesNetwork) ;
-
-
-					vector<MySpeciesNode*> allNodesSwitching = bestSwitching->getNodes();
-				
-
-				
-					//bestSwitching->setCorrespondance(allNodesSwitching);
-
-
-					BOOST_FOREACH( MySpeciesNode *node, allNodesSwitching ) {
-						if(node->getInfos().secondaryFather !=NULL){
-							std::pair <int,int> edge = std::make_pair(node->getInfos().secondaryFather->getId(),node->getId());
-							//cout << "reticulation " << node->getId() << " " << node->getInfos().primaryFather->getId() <<  " " << node->getInfos().secondaryFather->getId() << "\n";	
-
-							//if secondary father is kept, we delete the primary edge
-							if ( std::find(edgesBestSwitchings.begin(), edgesBestSwitchings.end(), edge) != edgesBestSwitchings.end() ){
-								//cout << "qui\n";
-								MySpeciesNode* father = node->getInfos().primaryFather;
-								MySpeciesNode* fatherNew = node->getInfos().secondaryFather;
-								MySpeciesNode* son = bestSwitching->getNodeById(edge.second);
-								//cout << " " << father->getId() << " " << son->getId() << "\n";	
-								if(father->getId() == son->getFather()->getId()){
-									father->removeSon(son);
-									son->removeFather();
-									//fatherNew->addSon(son);
-									son->setFather(fatherNew);
-								}
-								//cout << son->getFather()->getId();
-								//cout << father->getNumberOfSons() << endl;
-							}	
-							else{ //otherwise (ie if primary father is kept or none is kept -- in this case we keep the primary one as default )
-								//cout << "qua\n";
-								MySpeciesNode* father = node->getInfos().secondaryFather;
-								MySpeciesNode* fatherNew = node->getInfos().primaryFather;
-								MySpeciesNode* son = bestSwitching->getNodeById(edge.second);
-								//cout << " " << father->getId() << " " << son->getId() << "\n";	
-								if(father->getId() == son->getFather()->getId()){
-									father->removeSon(son);
-									son->removeFather();
-									//fatherNew->addSon(son);
-									son->setFather(fatherNew);
-									//son->removeFather();							
-									//son->setFather(fatherNew);
-								}
-								son->getInfos().secondaryFather=NULL;
-								//cout << son->getFather()->getId();
-								//son->getInfos().primaryFather=fatherNew;
-							}
-						
-				
-						
-					
-						
-						}
-					}
-															
-						//to finish, if we get the switching we should have the same min rec ??? think about it 
-						bestSwitching->makeBinarySwitching(bestSwitching->getRootNode(), true);
-
-
-						//int maxTS2 = 
-						bestSwitching->assignNetworkPostOrderIdsDFS();
-	        			bestSwitching->compute_RealPostOrder();  //needed?
-	        			
-	        			vector<std::pair <int,int> > edgesBestSwitchingsSwitching;
-							
-						numLosses =0 ;
-						numDupli =0 ;
-						numTransfers =0 ;
-        				
-        				NetAlg netAlgSwitching( bestSwitching, geneTree,
-							   gStringParams.find("char.sep")->second[0],
-							   gDoubleParams.find("dupli.cost")->second,
-							   gDoubleParams.find("loss.cost")->second,
-							   gDoubleParams.find("HGT.cost")->second );
-					   
-					   	double bestCostSwitching = netAlg.runMinSwitch( numLosses, numDupli , numTransfers, edgesBestSwitchingsSwitching );
-						//cout << "bestCostSwitching = " << bestCostSwitching << endl; 
-
-
-
-					
-
-						bestSwitching->makeBinarySwitching();
-						
-						string pathName = gPathPrefix + 
-						gStringParams.find("print.newick.best.switching.file")->second;
-						bestSwitching->printNewick( pathName );
-						cout << "Best switching printed in file: " << pathName << endl;
-						
-						
-						/* ?? to needed because we count losses in a different way in LGT networks
-						if(bestCostSwitching!=costMinSwitch){
-							cout << "ERRROR WRONG SWITCHING COST " << bestCostSwitching << " " << costMinSwitch << endl;
-							return 0;
-						}*/
-						
-
-                                        				
-				        //bestSwitching->makeBinarySwitching(bestSwitching->getRootNode(), true);
-                                        //bestSwitching->printNewick( "try" );
-                                        
-
-												
-
-				
-					cout << numLosses << " losses, " << numDupli
-						 << " duplications and " << numTransfers << " transfers" << endl;
-					cout << "Cost of a most parsimonious switching = " << costMinSwitch << endl;
-					
-					if(cost != -1 && costMinSwitch!=cost){
-						cout << "ERRROR BRUTE AND SWITCHING COSTS ARE DIFFERENT" << costMinSwitch << " " << cost << endl;
-						return 0;
-					}
-				}
-		
-				if( gBoolParams.find("min.recon")->second ) {
-					cout << "=============== MIN RECON ALG============" << endl;
-				
-					allNodes = speciesNetwork->getNodes();
-			
-					//BOOST_FOREACH( MySpeciesNode *node, allNodes ) {
-					//if(node->getInfos().secondaryFather !=NULL){
-					//		cout << "reticulation with number of son = " << node->getNumberOfSons() << endl;
-					//	}
-					//}
-
-
-				
-					CladesAndTripartitions *cladesAndTripartitions= new CladesAndTripartitions(gStringParams.find("char.sep")->second[0], *(geneTree) );
-				
-				
-					// Create the matrix and print the best cost
-					double inEps;
-				
-				
-					vector<int> changedTimeSlices;
-					DTLMatrix*dtlMatrix = createAndRunMatrix( false, speciesNetwork,
-											cladesAndTripartitions, maxTS, 
-											changedTimeSlices, inEps );
-										
-				
-					double bestCost = dtlMatrix->getBestCost(
-                            gBoolParams.find("gene.origination.species.root")
-                                        ->second );
-					if( bestCost == std::numeric_limits<double>::max() ) 
-						cout << "Cost of a most parsimonious reconciliation: OVERFLOW" 
-						 << endl;
-					else
-						cout << "Cost of a most parsimonious reconciliation: " 
-						 << bestCost << endl;
-					
-
-					
-					double costMinRec = netAlg.runMinRecon();
-					
-                    //netAlg.printRecon();
-					
-					if( gBoolParams.find("print.info")->second ) {
-                        ofstream statFile;
-                        vector<MyGeneTree*> emptyGeneTrees;
-                        makeGraph( inEps, "", statFile, NULL, 
-                                   emptyGeneTrees, cladesAndTripartitions, 
-                                   dtlMatrix, false, speciesNetwork );
-                    }
-                    delete dtlMatrix;
-                    
-
-					//CS to test the new implementation, but I am not sure because we do not count losses exactly the same way....
-					cout << "cost old costMinRec (no HGT possible)= " << costMinRec << endl;
-				    if(gDoubleParams.find("HGT.cost")->second==0 && (bestCost!=costMinRec)){
-                         cout << "ERRROR OLD AND NEW MIN COSTS ARE DIFFERENT " << bestCost << " " << costMinRec << endl;
-                         //return 0;
-                    }
+        // read the species tree
+        MySpeciesTree *speciesTree = getSpeciesTree();
         
-	                                		
-
-			
-
-				}
-				if(bestSwitching!=NULL)
-					delete bestSwitching;	
-
-			
+        if( speciesTree->getNumberOfLeaves()<=1) {
+            cerr << "Error: species tree has less than 2 leaves\n";
+            exit(1);
+        }		
+        
 
 
+        // map of taxaNames required for the function restrictTreeToASetOfTaxa
+        boost::unordered_map<string, int> taxaNamesSpecies;
+        vector<string> leaves = speciesTree->getLeavesNames();
+        BOOST_FOREACH( string leaf, leaves) 
+            taxaNamesSpecies.insert(make_pair(leaf,1));
 
-				//BOOST_FOREACH( MyGeneTree *tree, geneTrees ) 
-					delete geneTree;
-			}
-			
-			
-			delete speciesNetwork;    
-			 
-			
-		   
-			
-		}
+        //read the gene trees
+        string errString = "";
+        vector<MyGeneTree*> geneTrees;
+        if( !gBoolParams.find("ale")->second ) {
+            bool readBootstrap = false;
+            if( gIntParams.find("collapse.mode")->second == 1 
+                || gBoolParams.find("use.bootstrap.weighting")->second ) 
+            {
+                readBootstrap = true;
+            }
+            geneTrees = MyGeneTree::readMyGeneTrees( 
+                    gStringParams.find("gene.file")->second.c_str(), errString,
+                    readBootstrap );
+                                
+            if( errString != "" ) {
+                cerr << "Error reading gene trees: " << errString << endl;
+                exit(1);
+            }
+            if( gBoolParams.find("verbose")->second ) 
+                cout << geneTrees.size() << " gene trees" << endl;
+        }
 
+        // process the species tree
+        vector<int> changedTimeSlices;
+        int maxTS = processSpeciesTree( speciesTree, geneTrees, 
+                                        changedTimeSlices );
+        // Gene trees loop
+        int counter = 0;
+        for( size_t i=0; i<geneTrees.size(); i++ ) {
+            counter++;
+
+            MyGeneTree *bootstrapGeneTree = NULL;
+            if( !checkGeneTree( counter, geneTrees[i], bootstrapGeneTree,
+                                taxaNamesSpecies, mapNames ) )
+                continue; //ship these gene trees 
+            if(geneTrees[i]->getNumberOfLeaves()<=1){
+                    cout << "Gene tree number " << i+1 << ", once restricted to the species present in the species "
+                    << "tree, has only one leaf, skipped\n";
+                continue;
+            }
+            
+            // do each tree individually if this isn't an amalgamation
+            if( !gBoolParams.find("amalgamate")->second ) {
+                vector<MyGeneTree*> singleGeneTree;
+                singleGeneTree.push_back( geneTrees[i] );
+                if( gBoolParams.find("verbose")->second )
+                    cout << "Gene tree " << counter << endl;
+
+                bool backtrackTree = false; // run backtrack tree
+                bool constructGraph = gBoolParams.find("print.info")->second;
+                if( gIntParams.find("resolve.trees")->second  != -1
+                    && gBoolParams.find("print.info")->second ) 
+                {
+                    backtrackTree = true;
+                    constructGraph = false;  // not this time, after
+                }
+
+                // run the calculations
+                if( geneTrees.size() == 1 )
+                    counter = 0; // don't add extension
+                run( false, speciesTree, singleGeneTree, maxTS, 
+                        changedTimeSlices, counter, constructGraph, 
+                        backtrackTree, true, bootstrapGeneTree );
+                if( gBoolParams.find("verbose")->second )
+                    cout << endl; // add a gap in output
+            }
+
+            if( bootstrapGeneTree != NULL )
+                delete bootstrapGeneTree;
+        }
+
+        if( !gBoolParams.find("ale")->second && geneTrees.size() == 0 ) {
+            cout << "No gene trees found." << endl;
+            exit(1);
+        }
+
+        if( gBoolParams.find("verbose")->second ) 
+            bpp::ApplicationTools::displayTime("Reading the gene trees done:");
+
+        if( gBoolParams.find("print.support")->second ) {
+            // print clade support and exit 
+            printCladeSupport( geneTrees );
+            return 0;
+        } 
+
+    
+        // run the amalgamation
+        if( gBoolParams.find("amalgamate")->second ) {
+            run( true, speciesTree, geneTrees, maxTS, 
+                    changedTimeSlices, 0, false, 
+                    gBoolParams.find("print.info")->second );
+        }
+
+        // print a species file with post order ids 
+        if( gBoolParams.find("print.newick")->second ) {
+            string pathName = gPathPrefix + 
+                gStringParams.find("print.newick.species.tree.file")->second;
+            MySpeciesTree *tree = speciesTree->getPostorderTree();
+            tree->printNewick( pathName );
+            delete tree;
+        }
+    
+        // clean up
+        BOOST_FOREACH( MyGeneTree *tree, geneTrees ) 
+            delete tree;
+        delete speciesTree;
+    
+		
         if( gBoolParams.find("verbose")->second )
 		    bpp::ApplicationTools::displayTime("Done:");
 

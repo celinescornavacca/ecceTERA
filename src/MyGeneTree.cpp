@@ -487,28 +487,3 @@ vector<MyGeneTree*> MyGeneTree::readMyGeneTrees(
     return trees;
 }
 
-
-/**
- * Construct a subtree for the given id, i.e.,
- * only nodes where biCompMap[nodeId] == biCompId are included.
- *
- * @return a switching tree for the given biCompId
- */
-MyGeneTree* MyGeneTree::switching(
-        MyGeneNode *root, ///< root of network (speciation node)
-        const int biCompId, ///< biconnected set to use 
-        const vector<int> &biCompMap ) ///< mapping of node ids to set
-{
-    // find all hybrid nodes and record which nodes (of all) are in network
-    vector<int> hybridIndices( getNumberOfNodes() ); 
-
-    // create swtiching
-    // maps id->new
-    vector<MyGeneNode*> newNodes( getNumberOfNodes() ); 
-    vector<bool> deletedNodes( getNumberOfNodes(), false ); 
-    allSwitchingsAux( root, 0, biCompId, biCompMap,
-                    hybridIndices, newNodes, deletedNodes );
-    MyGeneNode *newRoot = newNodes[root->getId()];
-
-    return new MyGeneTree( *newRoot );
-}

@@ -8,7 +8,7 @@ add_subdirectory(ext)
 
 
 
-ADD_EXECUTABLE( ecceTERA DTLMatrixNetwork.cpp ecceTERA.cpp DTLMatrix.cpp CladesAndTripartitions.cpp MyMatrix.cpp MySpeciesTree.cpp MyGeneTree.cpp DTLGraph.cpp MyMatrixV.cpp MyMatrixT.cpp DTLMatrixTriplets.cpp DTLMatrixRecalc.cpp MyNetwork.cpp NetAlg.cpp  )
+ADD_EXECUTABLE( ecceTERA ecceTERA.cpp DTLMatrix.cpp CladesAndTripartitions.cpp MyMatrix.cpp MySpeciesTree.cpp MyGeneTree.cpp DTLGraph.cpp MyMatrixV.cpp MyMatrixT.cpp DTLMatrixTriplets.cpp DTLMatrixRecalc.cpp  )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BPP_INCLUDE_DIR} ${BOOST_INCLUDE_DIR} ${SIMPLESVG_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} ${BPP_LIBRARY})

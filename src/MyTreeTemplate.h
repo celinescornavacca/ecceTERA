@@ -101,7 +101,6 @@ protected:
     void readTree( 
             string description, ///< Newick string 
             string &errString, ///< error description
-            bool eNewick, ///< allow eNewick format
             bool bootstrap ) ///< names are bootstrap values
     {
         // tokenize tree input
@@ -110,7 +109,7 @@ protected:
         Tokenizer::iterator iter=tok.begin();
 
         // create tree
-        N *root = readMyNode( tok, iter, errString, eNewick, bootstrap );
+        N *root = readMyNode( tok, iter, errString, bootstrap );
         if( errString != "" ) 
             return;
 
@@ -133,7 +132,7 @@ protected:
      * Assign the node name if the node is a leaf, else assign
      * the bootstrap value.
      *
-     * @return eNewick tag if found
+     * @return eNewick tag if found (so always empty because NwetAlgo is deprecated in this version)
      */
     static string readNodeName( 
             Tokenizer &tok, ///< string tokenizer
@@ -141,7 +140,6 @@ protected:
             N *node, ///< node
             bool isLeaf,  ///< true if node is a leaf
             string &errString, ///< error description
-            bool eNewick, ///< allow eNewick format
             bool bootstrap ) ///< names are bootstrap values
     {
         string tag = "";
@@ -172,9 +170,6 @@ protected:
                 if( isLeaf || !bootstrap ) {
                     node->setName(val);
 
-                    // check for tag
-                    if( eNewick && val.find( "#" ) != string::npos ) 
-                        tag = val;
                 } else {
                     // internal node bootstrap
                     try {
@@ -202,52 +197,7 @@ protected:
     }
    
 
-    /**
-     * Process an eNewick tag. 
-     *
-     * It uses a map to the nodes, which cannot be implmeted in a template.
-     *
-     * @return node
-     */
-    virtual N *handleNewickTag( 
-            bool isLeaf,  ///< node is a leaf
-            N *node,    ///< node
-            string tag, ///< tag 
-            string &errString ) ///< any errors
-    { 
-        cerr << "handleNewickTag not implemented" << endl; 
-        exit(1); 
-        return NULL; 
-    }
 
-
-    /**
-     * It copies the sec prim parents, for networks. 
-     */
-    virtual void copyPrimSecParentsInfo(  
-            N *node,   
-             N *nodeToCopy  ) 
-    { 
-
-    }
-
-
-
-
-
-    /**
-     * Store the information that the arc that we are going to add  is a secondary one. 
-     *
-     * Not implemented in the tree but for the network
-     *
-     */
-    virtual void handleSecondaryArcs( 
-            N *node    ///< node 
-            ) 
-    { 
-        cerr << "handleSecondaryArcs not implemented" << endl; 
-        exit(1); 
-    }
 
 
     /**
@@ -262,7 +212,6 @@ protected:
             Tokenizer &tok, ///< string tokenizer
             Tokenizer::iterator &iter, ///< string tokenizer iterator
             string &errString, ///< error description
-            bool eNewick, ///< allow eNewick format
             bool bootstrap ) ///< names are bootstrap values
     {
         // initialize basic information
@@ -284,7 +233,7 @@ protected:
                     inNode = true;
                 iter++;
                 N *son = readMyNode( tok, iter, errString, 
-                        eNewick, bootstrap );
+                        bootstrap );
                 if( errString != "" ) 
                     return NULL;
                 node->addSon( son );
@@ -309,22 +258,11 @@ protected:
         }
 
         string tag = readNodeName ( tok, iter, node, isLeaf, errString,
-                                 eNewick, bootstrap );
-                                 
-        if(eNewick){ 
-        	for (int c=0; c<node->getNumberOfSons(); c++){
-        		if(node->getSon(c)->getNumberOfSons()==1){
-        			handleSecondaryArcs(node->getSon(c)); //remember that node is a leaf with a tag # and thus a secondary child
-        		} 
-        	}    
-        }     
+                                bootstrap );
+                                     
                                  
         if( errString != "" ) 
             return NULL;
-
-        if( eNewick && tag != "" ) {
-            node = handleNewickTag( isLeaf, node, tag, errString ); 
-        }
 
         return node;
     }
@@ -463,118 +401,6 @@ protected:
 
         return treeStrings;
     }
-
-
-    /**
-     * Create a switching tree for the given bicompId.
-     *
-     * Only nodes whose biComp number (in biCompMap) that match
-     * biCompId are put in the tree.
-     *
-     * The switchNum is used as a set of boolean values to determine
-     * which child of hybrid node to use for the current switching.
-     *
-     * @return True if edge should be added.
-     */
-    bool allSwitchingsAux(
-            N *node,           // current node in the recursion
-            const int switchNum,    ///< current switching
-            const int biCompId,     ///< which biComp is being used
-            const vector<int> &biCompMap, ///< biComp for each node
-            const vector<int> &hybridIndices, 
-                ///< consecutive numbering of hybrid nodes.
-            vector<N*> &newNodes,   
-                ///< map of tree node ids to correponding new nodes in switching
-            vector<bool> &deletedNodes ) 
-                ///< internal nodes with no children in this switching
-    {
-        bool addedNode = true;
-
-        // deleted hybrid node - don't add 
-        if( deletedNodes[node->getId()] )
-            return false;
-
-        bool outside = true; // node not in biconnected component
-        if( biCompMap[node->getId()] == biCompId ) {
-            // part of bi-connected Compononent 
-            outside = false;
-
-            bool alreadyAdded = false;
-            if( newNodes[node->getId()] != NULL ) 
-                alreadyAdded = true;
-
-            if( node->getNumberOfSons() == 1 ) {
-                // hybrid node - use switchNum bits to choose parent 
-                // Always create this node on the first call. If
-                // switch bit is 0, return true if node not created,
-                // else false. If swtich bit is 1, return false if
-                // not added and true if the node is already created.
-                addedNode = false;
-                typedef std::bitset<sizeof(int)> IntBits;
-                int hybridNum = hybridIndices[node->getId()];
-                if( switchNum & (1<<(hybridNum)) ) {
-                    // use second call 
-                    if( alreadyAdded ) 
-                        addedNode = true;
-                } else {
-                    // use first call
-                    if( !alreadyAdded ) 
-                        addedNode = true;
-                }
-            }   
-        
-            if( alreadyAdded )
-                return addedNode;
-        }
-
-        N *newNode = new N();
-        newNodes[node->getId()] = newNode;
-        
-        copyPrimSecParentsInfo(newNode,node); //setPrimaryFather setSecondaryFather
-        
-       
-        
-        
-        if( mCorrespondence.size() != 0 ) 
-            newNode->setId( node->getId() );
-
-        // could be the root if two nodes
-        if( node->isLeaf() && node->hasFather() ) 
-            newNode->setName( node->getName() ); // for outside of network
-        else if( outside ) {
-            ostringstream os;
-            os << "r(" << biCompMap[node->getId()] << ")";
-            string biCompName = os.str();
-            newNode->setName( biCompName );
-        }
-
-        if( outside )
-            return true;
-
-        // connect node to sons in the network
-        int newSonCount = 0;
-        for( size_t i=0; i<node->getNumberOfSons(); i++ ) {
-            N *son = node->getSon(i);
-            int sonId = son->getId();
-            if( allSwitchingsAux( son, switchNum, biCompId, biCompMap,
-                        hybridIndices, newNodes, deletedNodes ) )
-            {
-                newNode->addSon( newNodes[sonId] );
-                newSonCount++;
-            }
-        }
-
-        if( !node->isLeaf() && newSonCount == 0 ) {
-            // internal node with no leaves - remove it
-            newNodes[node->getId()] = NULL;
-            delete newNode;
-            addedNode = false;
-            deletedNodes[node->getId()] = true;
-        }
-
-        return addedNode;
-    }
-
 
 
 
