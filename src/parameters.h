@@ -59,7 +59,7 @@ std::map<string,string> gStringParams; // string, char, and path
 
 // Ordered for the help message.
 // Parameters with an empty description are not displayed in the help.
-const int gParameterCount = 77; // This must matche the size of gParameters
+const int gParameterCount = 72; // This must matche the size of gParameters
 string const gParameters[gParameterCount][4] = {
 // basic options
  {"species.file", "path", "required", "species tree file (newick)" },
@@ -200,15 +200,6 @@ string const gParameters[gParameterCount][4] = {
 
  // strale parameters
  {"costs.file", "path", "none", "" },
- {"other.species.file", "path", "none", "" },
- {"other.costs.file", "path", "none", "" },
- {"date.change.matrix", "path", "none", ""},
-    //"matrix csv file from a previous run"},
- {"date.change.swap", "string", "", ""}, 
-    //"comma-separated list of 'dates' to swap"},
- {"date.changes", "string", "", ""},
-     //"comma-separated list of time slices that changed"},
-
 
  // TO DEPRECATE
  {"extension.id", "string", "", ""}, // "ID added to the end of file"}
@@ -331,6 +322,8 @@ void readParameters(
         string name = gParameters[i][0];
         string type = gParameters[i][1];
         string value;
+
+
              
         // get value 
         iterStr = params.find( name );	
@@ -498,33 +491,6 @@ void readParameters(
         exit(1);
     }
 
-    // date change specific options
-    if( gStringParams.find("date.change.matrix")->second != "none" ) {
-        // Date changing parameteres
-        if( gBoolParams.find("verbose")->second ) 
-            bpp::ApplicationTools::displayResult(
-                    "Changing dates using matrix csv file", 
-                    gStringParams.find("date.change.matrix")->second);
-
-        // Get parameters necessary for preparing species and gene trees
-        // from the matrix file.
-        // Read other parameters from the matrix file later.
-        bool td;
-        DTLMatrixRecalc::getCSVparams( 
-                gStringParams.find("date.change.matrix")->second.c_str(), td );
-        gBoolParams["compute.TD"] = td;
-       
-        // read date function 
-        if( gStringParams.find("other.species.file")->second == "none" 
-            && gStringParams.find("date.change.swap")->second == "" 
-            && gStringParams.find("date.changes")->second == "" ) 
-        {
-            cerr << "other species tree, date changes or swap "
-                    "required with date.change.matrix"
-                << endl;
-            exit(1);
-        }
-    }
 
     if( gIntParams.find("max.iterations")->second < 1 ) {
         cerr << "max.iterations must be greater than 0" << endl;

@@ -58,7 +58,6 @@ knowledge of the CeCILL license and that you accept its terms.
 #include "CladesAndTripartitions.h"
 #include "DTLMatrix.h"
 #include "DTLMatrixTriplets.h"
-#include "DTLMatrixRecalc.h"
 #include "DTLGraph.h"
 #include <Bpp/Phyl/Io/Newick.h>
 #include "parameters.h"
@@ -68,87 +67,6 @@ knowledge of the CeCILL license and that you accept its terms.
 
 
 
-/** 
- * read date swap, which is a comma separated list of
- * pairs of integers, separated by a -, e.g. 7-8,15-24
- *
- * @return true if no errors
- */ 
-bool parseDateSwap( 
-        vector<pair<int, int> > &dateMap, ///< the swap pairs in a map
-        string &errStr ) ///< description of any errors
-{
-
-    // loop over changes
-    string::size_type index = -1;
-    while( true ) {
-        string val;
-        string::size_type prevIndex = index;
-        string swapStr = gStringParams.find("date.change.swap")->second;
-        index = swapStr.find(",", index+1 );
-        if( index == string::npos ) 
-            val = swapStr.substr(prevIndex+1); // last token 
-        else 
-            val = swapStr.substr(prevIndex+1, index-prevIndex-1);
-        size_t index2 = val.find("-");
-        if( index2 == string::npos ) {
-            errStr = "Date function missing separator (-)";
-            return false;
-        }
-        try {
-            int ts1 = bpp::TextTools::toInt( (val.substr(0,index2)).c_str() );
-            int ts2 = bpp::TextTools::toInt( (val.substr(index2+1)).c_str() );
-            dateMap.push_back(make_pair(ts1,ts2));
-
-//            dateMap.insert(make_pair(ts1,ts2));
-//            dateMap.insert(make_pair(ts2,ts1));
-// Not catching non-numerics (change in ComputeClades too)
-// Use boost cast
-//cout << "reorder: <" << ts1 << "/" << ts2 << ">" << endl;
-        } catch( bpp::Exception e ) {
-              errStr = "Date swap contains non-numeric time slices.";
-              return false;
-        }
-        if( index == string::npos ) 
-            break;
-    }
-
-    return true;
-}
-
-/** 
- * read date changes, which is a comma separated list of time slices
- *
- * @return true if no errors
- */ 
-bool parseDateChanges( 
-        vector<int> &changedTimeSlices,
-        string &errStr ) ///< description of any errors
-{
-    // loop over changes
-    string::size_type index = -1;
-    while( true ) {
-        string val;
-        string::size_type prevIndex = index;
-        string changeStr = gStringParams.find("date.changes")->second;
-        index = changeStr.find(",", index+1 );
-        if( index == string::npos ) 
-            val = changeStr.substr(prevIndex+1); // last token 
-        else 
-            val = changeStr.substr(prevIndex+1, index-prevIndex-1);
-        try {
-            int ts = bpp::TextTools::toInt( val );
-            changedTimeSlices.push_back( ts );
-        } catch( bpp::Exception e ) {
-              errStr = "Date changes contains non-numeric time slices.";
-              return false;
-        }
-        if( index == string::npos ) 
-            break;
-    }
-
-    return true;
-}
 
 /**
  * Return the memory used in MB.
@@ -351,121 +269,97 @@ DTLMatrix *createAndRunMatrix(
 {
     inEps = 0;
     DTLMatrix *dtlMatrix = NULL;
-    if( gStringParams.find("date.change.matrix")->second == "none" ) {
 
-        // record best splits if needed later
-        bool useBestSplits = false;
-        if( gBoolParams.find("verbose")->second 
-            || gBoolParams.find("print.newick")->second
-            || gStringParams.find("print.reroot.file")->second != "none" 
-            || returnTree )
-        {
-            useBestSplits = true; // required to print event counts or newick
-        }
-
-        // Create matrix
-        if( gIntParams.find("pareto.mod")->second > 0 ) {
-            // create triplets matrix
-            if( gBoolParams.find("verbose")->second )
-                cout << "============ pareto mod: " 
-                     << gIntParams.find("pareto.mod")->second << endl;
-            dtlMatrix = new DTLMatrixTriplets( speciesTree, 
-                            cladesAndTripartitions, 
-                            gDoubleParams.find("WGD.cost")->second, 
-                            gFixedCosts, 
-                            gBoolParams.find("compute.T")->second,
-                            gBoolParams.find("compute.TL")->second,
-                            gDoubleParams.find("dupli.cost")->second, 
-                            gDoubleParams.find("HGT.cost")->second, 
-                            gDoubleParams.find("loss.cost")->second, 
-                            maxTS, 
-                            gDoubleParams.find("weight.amalgamation")->second, 
-                            useBestSplits, 
-                            gDoubleParams.find("ils.cost")->second, 
-                            gIntParams.find("pareto.mod")->second, 
-                            gDoubleParams.find("nD")->second, 
-                            gDoubleParams.find("nL")->second, 
-                            gDoubleParams.find("nDL")->second );
-        } else
-            dtlMatrix = new DTLMatrix( speciesTree, 
-                    cladesAndTripartitions, 
-                    gDoubleParams.find("WGD.cost")->second, 
-                    gFixedCosts,
-                    gBoolParams.find("compute.T")->second, 
-                    gBoolParams.find("compute.TL")->second, 
-                    gDoubleParams.find("dupli.cost")->second, 
-                    gDoubleParams.find("HGT.cost")->second, 
-                    gDoubleParams.find("loss.cost")->second, 
-                    maxTS, 
-                    gDoubleParams.find("weight.amalgamation")->second, 
-                    useBestSplits,
-                    gDoubleParams.find("ils.cost")->second );
-
-        // run calculation
-        dtlMatrix->calculateMatrix( 
-                gBoolParams.find("verbose")->second, 
-                gIntParams.find("max.iterations")->second, 
-                gBoolParams.find("fix.dtl.costs")->second,
-                gIntParams.find("dated")->second );
-
-        if( gFixedCosts && gBoolParams.find("verbose")->second ) {
-// count events needs to be updated to handle variable costs
-            int duplications = 0;
-            int transfers = 0; 
-            int losses = 0;
-            int ils = 0;
-            double N_am = dtlMatrix->countEvents(duplications, 
-                                                 transfers, losses, ils );
-            cout << "nAm=" << N_am << ", duplications=" << duplications 
-                 << ", transfers=" << transfers << ", losses=" << losses;
-            if( speciesTree->hasILS() )
-                cout << ", ils=" << ils;
-            cout <<endl;
-        }
-
-        if( gDoubleParams.find("suboptimal.epsilon")->second > 0 
-            || gIntParams.find("pareto.mod")->second > 0 
-            || ( gBoolParams.find("print.info")->second 
-                 && gDoubleParams.find("min.recs")->second > 0 ) )
-        {
-            // rerun for suboptimal
-            inEps = gDoubleParams.find("suboptimal.epsilon")->second;
-            if( gNoEpsilon ) {
-                inEps = std::numeric_limits<double>::max();
-            } else if( !gBoolParams.find("real.epsilon")->second )
-                inEps *= dtlMatrix->getBestCost(
-                            gBoolParams.find("gene.origination.species.root")
-                                        ->second ) /100;
-
-            dtlMatrix->calculateMatrix( gBoolParams.find("verbose")->second, 
-                        1, gBoolParams.find("fix.dtl.costs")->second, 
-                        gIntParams.find("dated")->second, inEps );
-        }
-
-    } else {
-        // Date changing algorithm, which reads existing algorithm
-        DTLMatrixRecalc *dtlMatrixR = new DTLMatrixRecalc( speciesTree,
-                cladesAndTripartitions, 
-                gStringParams.find("date.change.matrix")->second.c_str(),
-                maxTS );
-        if( changedTimeSlices.size() > 0 ) {
-        //cout << "=== changed time slices:";
-        //BOOST_FOREACH( int ts, changedTimeSlices ) 
-        //    cout << " " << ts;
-        //cout << endl;
-    
-            dtlMatrixR->recalculateMatrix( 
-                    changedTimeSlices, gBoolParams.find("verbose")->second );
-           // For testing:
-//            dtlMatrix->calculateMatrix( gBoolParams.find("verbose")->second, 
-//                   1, false, 2, 0, changedTimeSlices[0], maxTS);
-//            dtlMatrix->calculateMatrix( gBoolParams.find("verbose")->second );
-        } else {
-            cout << "No time slice changes were given." << endl;
-        }
-
-        dtlMatrix = dtlMatrixR;
+    // record best splits if needed later
+    bool useBestSplits = false;
+    if( gBoolParams.find("verbose")->second 
+        || gBoolParams.find("print.newick")->second
+        || gStringParams.find("print.reroot.file")->second != "none" 
+        || returnTree )
+    {
+        useBestSplits = true; // required to print event counts or newick
     }
+
+    // Create matrix
+    if( gIntParams.find("pareto.mod")->second > 0 ) {
+        // create triplets matrix
+        if( gBoolParams.find("verbose")->second )
+            cout << "============ pareto mod: " 
+                    << gIntParams.find("pareto.mod")->second << endl;
+        dtlMatrix = new DTLMatrixTriplets( speciesTree, 
+                        cladesAndTripartitions, 
+                        gDoubleParams.find("WGD.cost")->second, 
+                        gFixedCosts, 
+                        gBoolParams.find("compute.T")->second,
+                        gBoolParams.find("compute.TL")->second,
+                        gDoubleParams.find("dupli.cost")->second, 
+                        gDoubleParams.find("HGT.cost")->second, 
+                        gDoubleParams.find("loss.cost")->second, 
+                        maxTS, 
+                        gDoubleParams.find("weight.amalgamation")->second, 
+                        useBestSplits, 
+                        gDoubleParams.find("ils.cost")->second, 
+                        gIntParams.find("pareto.mod")->second, 
+                        gDoubleParams.find("nD")->second, 
+                        gDoubleParams.find("nL")->second, 
+                        gDoubleParams.find("nDL")->second );
+    } else
+        dtlMatrix = new DTLMatrix( speciesTree, 
+                cladesAndTripartitions, 
+                gDoubleParams.find("WGD.cost")->second, 
+                gFixedCosts,
+                gBoolParams.find("compute.T")->second, 
+                gBoolParams.find("compute.TL")->second, 
+                gDoubleParams.find("dupli.cost")->second, 
+                gDoubleParams.find("HGT.cost")->second, 
+                gDoubleParams.find("loss.cost")->second, 
+                maxTS, 
+                gDoubleParams.find("weight.amalgamation")->second, 
+                useBestSplits,
+                gDoubleParams.find("ils.cost")->second );
+
+    // run calculation
+    dtlMatrix->calculateMatrix( 
+            gBoolParams.find("verbose")->second, 
+            gIntParams.find("max.iterations")->second, 
+            gBoolParams.find("fix.dtl.costs")->second,
+            gIntParams.find("dated")->second );
+
+    if( gFixedCosts && gBoolParams.find("verbose")->second ) {
+    // count events needs to be updated to handle variable costs
+        int duplications = 0;
+        int transfers = 0; 
+        int losses = 0;
+        int ils = 0;
+        double N_am = dtlMatrix->countEvents(duplications, 
+                                                transfers, losses, ils );
+        cout << "nAm=" << N_am << ", duplications=" << duplications 
+                << ", transfers=" << transfers << ", losses=" << losses;
+        if( speciesTree->hasILS() )
+            cout << ", ils=" << ils;
+        cout <<endl;
+    }
+
+    if( gDoubleParams.find("suboptimal.epsilon")->second > 0 
+        || gIntParams.find("pareto.mod")->second > 0 
+        || ( gBoolParams.find("print.info")->second 
+                && gDoubleParams.find("min.recs")->second > 0 ) )
+    {
+        // rerun for suboptimal
+        inEps = gDoubleParams.find("suboptimal.epsilon")->second;
+        if( gNoEpsilon ) {
+            inEps = std::numeric_limits<double>::max();
+        } else if( !gBoolParams.find("real.epsilon")->second )
+            inEps *= dtlMatrix->getBestCost(
+                        gBoolParams.find("gene.origination.species.root")
+                                    ->second ) /100;
+
+        dtlMatrix->calculateMatrix( gBoolParams.find("verbose")->second, 
+                    1, gBoolParams.find("fix.dtl.costs")->second, 
+                    gIntParams.find("dated")->second, inEps );
+    }
+
+
 
     printMemory( "Matrix" );
 
@@ -1156,71 +1050,6 @@ MySpeciesTree *getSpeciesTree()
     return speciesTree;
 }
 
-/**
- * Use another species tree to calculate changed time slices.
- */
-void processOtherSpeciesTree(
-        MySpeciesTree *speciesTree, ///< the species tree
-        vector< pair<int, int> > &dateMap, ///< input date changes
-        vector<int> &changedTimeSlices ) ///< return changed time slices
-{
-    //cout << "OTHER SPECIES TREE: " 
-    //     << gStringParams.find("other.species.file")->second << endl;
-    if( changedTimeSlices.size() > 0 ) {
-        cout << "ERROR: Cannot do other species tree, already have "
-                " changed time slices." << endl;
-        exit(1);
-    }
-    if( gIntParams.find("dated")->second != 2 ) {
-        cout << "ERROR: other.species.file only applies to"
-                " subdivided trees" << endl;
-        exit(1);
-    }
-
-    // read tree
-    string errString = "";
-    MySpeciesTree* otherSpeciesTree = MySpeciesTree::readMySpeciesTree(
-               gStringParams.find("other.species.file")->second.c_str(),
-               errString,
-               gBoolParams.find("dates.as.bootstraps")->second );
-    if( errString != "" || otherSpeciesTree == NULL ) {
-        cerr << "Error reading other species tree: " << errString 
-              << endl;
-        exit(1);
-    }
-
-    if( gStringParams.find("other.costs.file")->second != "none" ) 
-        otherSpeciesTree->assignCosts( 
-                gStringParams.find("other.costs.file")->second );
-
-    // transfer dead
-    if( gBoolParams.find("compute.TD")->second )  
-        otherSpeciesTree->addAlphaForDeadTransfer( 
-                gBoolParams.find("dates.as.bootstraps")->second, 
-                gDoubleParams.find("HGT.cost")->second, 
-                gDoubleParams.find("loss.cost")->second );
-
-    otherSpeciesTree->compute_RealPostOrder();  
-
-    // subdivision
-    otherSpeciesTree->computeSubdivision( dateMap, 
-                     gBoolParams.find("dates.as.bootstraps")->second, 
-                     gBoolParams.find("ultrametric.only")->second,
-                     changedTimeSlices, errString ); 
-
-    otherSpeciesTree->assignPostOrderIds();
-
-    // find the changed time slices
-    changedTimeSlices = speciesTree->findChangedTimeSlices( 
-                            otherSpeciesTree );
-    delete otherSpeciesTree;
-
-    cout << "CHANGED TIME SLICES: ";
-    BOOST_FOREACH( int i, changedTimeSlices ) 
-        cout << i << " ";
-    cout << endl;
-}
-
 
 /** 
  * Process species tree: trimming, costs, subdivision, date changes
@@ -1235,22 +1064,6 @@ int processSpeciesTree(
     // parse data changing parameters
     vector< pair<int, int> > dateMap;
     string errStr = "empty error";
-    if( gStringParams.find("date.change.swap")->second != "" ) {
-        if( !parseDateSwap( dateMap, errStr ) ) {
-            cerr << "ERROR: " << errStr << endl;
-            exit(1);
-        }
-    }
-    if( gStringParams.find("date.changes")->second != "" ) {
-        if( !parseDateChanges( changedTimeSlices, errStr ) ) {
-            cerr << "ERROR: " << errStr << endl;
-            exit(1);
-        }
-    }
-
-    // for strale ordering to identify nodes to swap
-    if( dateMap.size() != 0 ) 
-        speciesTree->breadthFirstreNumber();
 
     // read variable costs
     if( gStringParams.find("costs.file")->second != "none" ) {
@@ -1290,17 +1103,15 @@ int processSpeciesTree(
 
     // subdivide tree if dated
     if( gIntParams.find("dated")->second == 2 ) {
-        bool success = speciesTree->computeSubdivision( dateMap, 
+        bool success = speciesTree->computeSubdivision( 
                         gBoolParams.find("dates.as.bootstraps")->second, 
                         gBoolParams.find("ultrametric.only")->second,
-                        changedTimeSlices, errStr ); 
+                        errStr ); 
         if( !success ) {
             cerr << "ERROR: " << errStr << endl;
             exit(1);
         }
         if( gBoolParams.find("verbose")->second ) {
-            BOOST_FOREACH(int ts, changedTimeSlices ) 
-                cout << "dates changed: " << ts << endl;
 
             bpp::ApplicationTools::displayTime(
                     "Computing the dated subdivision done:");
@@ -1385,10 +1196,6 @@ int processSpeciesTree(
             }
         }
     }
-
-    // process another species file
-    if( gStringParams.find("other.species.file")->second != "none" ) 
-        processOtherSpeciesTree( speciesTree, dateMap, changedTimeSlices );
 
     return maxTS;
 }

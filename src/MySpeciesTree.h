@@ -97,8 +97,7 @@ private:
     bool checkBootstrapValues( MySpeciesNode *node = NULL, 
                                double parentBS = -1 );
     void nameInternalNodes();
-    bool assignTimeSlices( vector< pair<int, int> > dateMap,
-                           vector<int> &changedTimeSlices, string &errStr);
+    bool assignTimeSlices(string &errStr);
     MySpeciesNode *getPostorderTreeAux( MySpeciesNode *curNode );
     bool trimTreeAux( boost::unordered_map<string,int> &taxaNames,
             MySpeciesNode *node, int &removedCount,
@@ -200,9 +199,9 @@ public:
     }
 
     // give all leaves the same depth
-    bool computeSubdivision( vector< pair<int,int> > dateMap, 
+    bool computeSubdivision( 
             bool bootstrapOrdering, bool ultrametric,
-            vector<int> &changedTimeStamps, string &errStr );
+            string &errStr );
 
     // alpha for transfer from the dead
     /** Has alpha */

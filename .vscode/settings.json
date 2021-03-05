@@ -23,6 +23,7 @@
         "deque": "cpp",
         "list": "cpp",
         "vector": "cpp",
-        "initializer_list": "cpp"
+        "initializer_list": "cpp",
+        "limits": "cpp"
     }
 }

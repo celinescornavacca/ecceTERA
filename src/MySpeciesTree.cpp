@@ -840,15 +840,9 @@ inline bool operator() (const MySpeciesNode * a, const MySpeciesNode * b )
  * Assign time slices. Leaves are 0. Internal nodes are ordered by
  * bootstrap distance.
  *
- * Time slice pairs in the dateMap vector are swapped. These values are
- * given in breadth first order. The corresponding changed time slices 
- * are returned in the changedTimeSlices variable.
- *
  * @return True if reordering doesn't change topology.
  */
 bool MySpeciesTree::assignTimeSlices( 
-        vector<pair<int, int> > dateMap, ///< pairs of time slices to swap
-        vector<int> &changedTimeSlices, ///< assigned time slices swapped
         string &errStr) ///< description of error, if any
 {
 
@@ -866,44 +860,6 @@ bool MySpeciesTree::assignTimeSlices(
     BOOST_FOREACH( MySpeciesNode *node, internalNodes ) {
         node->getInfos().timeSlice = ts;
         ts++;
-    }
-
-
-    // switch time slice from date map
-    if( dateMap.size() != 0 ) {
-
-        vector<MySpeciesNode*> nodes = getNodes();		
-        vector<MySpeciesNode*> indexedNodes( nodes.size() );
-        BOOST_FOREACH( MySpeciesNode* node, nodes ) 
-            indexedNodes[node->getInfos().breadthFirstOrder] = node;
-
-        pair<int,int> p;
-        BOOST_FOREACH( p, dateMap ) {
-            int ts1 = indexedNodes[p.first]->getInfos().timeSlice;
-            int ts2 = indexedNodes[p.second]->getInfos().timeSlice;
-
-//cout << "**** SWAPPING " << p.first << " (ts=" << ts1 << ",id=" 
-//    << indexedNodes[p.first]->getId() << ") and " << p.second << " (ts=" 
-//    <<  ts2 << ",id=" << indexedNodes[p.second]->getId() << ")" << endl;
-
-            indexedNodes[p.first]->getInfos().timeSlice = ts2;
-            indexedNodes[p.second]->getInfos().timeSlice = ts1;
-                
-            changedTimeSlices.push_back( ts1 );
-            changedTimeSlices.push_back( ts2 );
-        }
-
-        BOOST_FOREACH( MySpeciesNode *node, internalNodes ) {
-            if( node->hasFather() ) {
-                MySpeciesNode *father = node->getFather();
-                int sonTimeSlice = node->getInfos().timeSlice;
-                int fatherTimeSlice = father->getInfos().timeSlice;
-                if( sonTimeSlice >= fatherTimeSlice ) {
-                    errStr = "Reordering changed topology";
-                    return false;
-                }
-            }
-        }
     }
 
     return true;
@@ -928,10 +884,8 @@ bool MySpeciesTree::assignTimeSlices(
  * @return false if the date map has errors
  */
 bool MySpeciesTree::computeSubdivision( 
-        vector<pair<int, int> > dateMap, ///< pairs of time slices to swap
         bool bootstrapOrdering, ///< Ordering given from bootstrap values.
         bool ultrametric, ///< report error if not ultrametric
-        vector<int> &changedTimeSlices, ///< assigned time slices swapped
         string &errStr) ///< description of error, if any
 {
     mSubdivision = true;
@@ -960,24 +914,10 @@ bool MySpeciesTree::computeSubdivision(
     }
 
 
-    if( !assignTimeSlices( dateMap, changedTimeSlices, errStr ) )
+    if( !assignTimeSlices( errStr ) )
         return false;
 
-//    printTreeInfo(); // debugging
 
-    // sort changed time stamps and remove duplicates
-    if( changedTimeSlices.size() > 0 ) {
-        sort( changedTimeSlices.begin(), changedTimeSlices.end() );
-        int uniqueIdx=0;
-        for( size_t i=0; i<changedTimeSlices.size(); i++ ) {
-            if( i==0 
-                || changedTimeSlices[i] != changedTimeSlices[uniqueIdx-1] ) 
-            {
-                changedTimeSlices[uniqueIdx++] = changedTimeSlices[i];
-            }
-        }
-        changedTimeSlices.resize( uniqueIdx );
-    }
 
     return true;
 } 
@@ -1385,118 +1325,6 @@ void MySpeciesTree::assignNoSubdivisionTimeSlices()
         nodeIdx++;
     }
 }
-
-
-/**
- * Find changed time slices.
- *
- * Return the time slices in which the nodes don't correspond.
- *
- * @return changed time slices
- */
-vector<int> MySpeciesTree::findChangedTimeSlices( 
-        MySpeciesTree *otherTree, ///< tree to compare
-        bool printChanges ) ///< output changes
-{
-    if( printChanges ) 
-        cout << "=====findChangedTimeSlices====" << endl;
-
-    if( mCorrespondence.size() == 0 )
-        throw bpp::Exception("MySpeciesTree::findChangedTimeSlices:"
-                        " postOrder not set");
-
-    // check each time slice, starting with leaves
-    vector<int> changedTimeSlices;
-    for( int ts = 0; ts<(int)mCorrespondenceTS.size(); ts++ ) {
-        bool changed = false;
-        BOOST_FOREACH( int id, mCorrespondenceTS[ts] ) {
-            // get node with the same post order
-            MySpeciesNode *node = getNodeById( id );
-            int bfOrd = node->getInfos().breadthFirstOrder;            
-            MySpeciesNode *otherNode = otherTree->getNodeById( id );
-
-            if( node->isLeaf() ) {
-                // check if both are leaves and they have the same name
-                if( !otherNode->isLeaf() 
-                    || node->getName() != otherNode->getName() )
-                {
-                    if( printChanges ) 
-                        cout << ts << " " << id << " (" << bfOrd << ") LEAF "
-                            << otherNode->getName() << "->" << node->getName()
-                            << endl;
-                    changed = true;
-                }
-            } else {
-                // check if children have same post order numbers
-                size_t sonCount = node->getNumberOfSons();
-                if( sonCount != otherNode->getNumberOfSons() ) {
-                    if( printChanges ) 
-                        cout << ts << " " << id << " (" << bfOrd 
-                            << ") SON COUNT "
-                            << otherNode->getNumberOfSons() << "->" 
-                            << node->getNumberOfSons() << endl;
-                    changed = true;
-                } else if( sonCount == 2 ) {
-                    for( int i=0; i<2; i++ ) {
-                        MySpeciesNode *son = node->getSon(i);
-                        if( son->getId()
-                                != otherNode->getSon(0)->getId()
-                            && son->getId()
-                                != otherNode->getSon(1)->getId() )
-                        {
-                            if( printChanges ) 
-                                cout << ts << " " << id << " (" << bfOrd 
-                                   << ") 2 SON CHANGE "
-                                   << otherNode->getSon(0)->getId()
-                                   << ","
-                                   << otherNode->getSon(1)->getId()
-                                   << " -> " 
-                                   << node->getSon(0)->getId()
-                                   << ","
-                                   << node->getSon(1)->getId()
-                                   << endl;
-                            changed = true;
-                            break;
-                        }
-                    }
-                } else 
-                    throw bpp::Exception("MySpeciesTree::findChangedTimeSlices:"
-                        " trees not binary" );
-            }
-
-            if( !changed && (node->getInfos().duplicationCost 
-                    != otherNode->getInfos().duplicationCost 
-                || node->getInfos().hgtCost 
-                    != otherNode->getInfos().hgtCost 
-                || node->getInfos().lossCost 
-                    != otherNode->getInfos().lossCost ) )
-            {
-                if( printChanges ) {
-                    if( node->getNumberOfSons() == 1 )
-                        cout << "  ";
-                    cout << ts << " " << id << " (" << bfOrd 
-                        << ") 2 COSTS CHANGE "
-                        << otherNode->getInfos().duplicationCost << ", "
-                        << otherNode->getInfos().hgtCost << ", "
-                        << otherNode->getInfos().lossCost << " -> " 
-                        << node->getInfos().duplicationCost << ", "
-                        << node->getInfos().hgtCost << ", "
-                        << node->getInfos().lossCost << endl;
-                    if( isAlpha( node->getId() ))
-                        cout << "   =====ALPHA" << endl;
-                }
-
-                changed = true;
-            }
-        }
-        if( changed )
-            changedTimeSlices.push_back( ts );
-    }
-if( printChanges ) 
-cout << "===================" << endl;
-    return changedTimeSlices;
-}
-
 
 
 /**
