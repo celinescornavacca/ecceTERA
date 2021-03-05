@@ -438,10 +438,6 @@ private:
 
     bool hasCycles( int id, vector< vector<int> > &tree, vector<bool> &seenIt );
 
-    // Hali's output
-    string getReconciliationFormatHali( MyGeneTree &geneTree, 
-            vector<int> &pOrdToClade, 
-            vector< vector<MyGraph::Vertex> > &reconciliation );
 public: 
     /** DTL Graph Constructor */
     DTLGraph( 
@@ -536,10 +532,6 @@ public:
         return mGraph.properties(vertex).name;
     }
 
-    // Hali's output
-    void printReconciliationHali( 
-        MyGeneTree &geneTree, vector<int> &pOrdToClade, 
-        string outDir, string extensionId, bool triplets=false );
 };
 
 

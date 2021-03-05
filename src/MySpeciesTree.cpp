@@ -1275,7 +1275,6 @@ void MySpeciesTree::lexicographicBreadthFirstreNumber()
    
 /**
  * Copy the id's set by resetNodeIds to the realPostOrder property
- * (for Hali's code).
  * 
  * When the subdivision is calculated, artifical nodes will be added
  * and the nodes will be be assigned new ids. This preserve the

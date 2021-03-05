@@ -586,7 +586,6 @@ bool minRecsLoop(
 void printReconciliations(
     double numberSolutions, ///< number of reconciliations
     string ext,     ///< file name extension
-    ofstream &statFile, ///< hali's stat file
     vector<MyGeneTree*> geneTrees, ///< gene trees
     map<string,double> &eventSupports, ///< event supports
     CladesAndTripartitions *cladesAndTripartitions, ///< gene clades
@@ -695,27 +694,6 @@ void printReconciliations(
                 numberSolutions << " reconciliations" << endl;
     }
 
-    // print Hali's reconciliations
-    if( gBoolParams.find("hali")->second ) {
-        statFile << numberSolutions << endl;
-        statFile << "totalWeight:" << numberSolutions;
-        statFile.close();
-
-        MyGeneTree *geneTree = geneTrees[0];
-        geneTree->assignPostOrderIds();
-        vector<int> cladeToPOrd =
-            cladesAndTripartitions->getPostOrderMapping();
-        vector<int> pOrdToClade( cladeToPOrd.size() );
-        for( size_t id_u=0; id_u<cladeToPOrd.size(); id_u++ ) 
-            pOrdToClade[cladeToPOrd[id_u]] = id_u;
-        bool triplets = false;
-        if( gIntParams.find("pareto.mod")->second > 0 )
-            triplets = true;
-        graph.printReconciliationHali( *geneTree, pOrdToClade, 
-                gPathPrefix, 
-                gStringParams.find("extension.id")->second, 
-                triplets );
-    }
 }
 
 /**
@@ -724,7 +702,6 @@ void printReconciliations(
 void makeGraph(
     double inEps,   ///< epsilon value, if used
     string ext,     ///< file name extension
-    ofstream &statFile, ///< hali's stat file
     MyGeneTree *polytomyTree, ///< polytomy tree to expand
     vector<MyGeneTree*> geneTrees, ///< gene trees
     CladesAndTripartitions *cladesAndTripartitions, ///< gene clades
@@ -800,7 +777,7 @@ void makeGraph(
     } else if( notTooBig ) {
         cout << "Number of reconciliations: " << numberSolutions <<endl;
 //cout << "Count consistent: " << graph.countConsistent() << endl;
-        printReconciliations( numberSolutions, ext, statFile,
+        printReconciliations( numberSolutions, ext,
                               geneTrees, eventSupports, cladesAndTripartitions,
                               dtlMatrix, speciesTree, graph );
 
@@ -865,20 +842,6 @@ void run(
     if( !gBoolParams.find("amalgamate")->second && counter > 0 )
         ext = "_" + bpp::TextTools::toString( counter );
 
-    // Hali's stat output
-    ofstream statFile;
-    if( gBoolParams.find("hali")->second ) {
-        statFile.open( string(gPathPrefix + "statistics.txt" 
-                       + gStringParams.find("extension.id")->second).c_str(), 
-                        ios::out );
-        statFile << "\"runID\", \"optCost\", \"dupCost\", \"tranCost\","
-                    " \"lossCost\", \"nbRecs\", \"nbCanonicals\"" << endl; 
-        statFile << 1 << "," << bestCost<< "," 
-                 << gDoubleParams.find("dupli.cost")->second << "," 
-                 << gDoubleParams.find("HGT.cost")->second<< "," 
-                 << gDoubleParams.find("loss.cost")->second << ",,";
-    }
-
     // matrix - only print once
     string matrixFileStr = gStringParams.find("print.matrix.file")->second;
     if( matrixFileStr != "none" ) {
@@ -898,7 +861,7 @@ void run(
     // Graph 
     bool rerunParetoMod = false;
     if( constructGraph ) 
-        makeGraph( inEps, ext, statFile, polytomyTree, geneTrees, 
+        makeGraph( inEps, ext, polytomyTree, geneTrees, 
                     cladesAndTripartitions, dtlMatrix, rerunParetoMod,
                     speciesTree );
 

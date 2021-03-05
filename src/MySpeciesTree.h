@@ -56,7 +56,7 @@ public:
     // ids
     int breadthFirstOrder;  ///< breadth first ordering number (for strale)
     unsigned long realPostOrder;  
-        ///< post-order number assigned to real nodes (Hali's code)
+        ///< post-order number assigned to real nodes 
 
     // species node information 
     //bool WGD;       ///< whole genome duplication occured
@@ -233,8 +233,6 @@ public:
                            double hgtCost, double lossCost );
     bool assignCosts( string costsFileName );
 
-
-    // Hali's functions
     void compute_RealPostOrder();
 
     //WDF

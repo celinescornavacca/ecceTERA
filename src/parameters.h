@@ -59,7 +59,7 @@ std::map<string,string> gStringParams; // string, char, and path
 
 // Ordered for the help message.
 // Parameters with an empty description are not displayed in the help.
-const int gParameterCount = 78; // This must matche the size of gParameters
+const int gParameterCount = 77; // This must matche the size of gParameters
 string const gParameters[gParameterCount][4] = {
 // basic options
  {"species.file", "path", "required", "species tree file (newick)" },
@@ -176,6 +176,9 @@ string const gParameters[gParameterCount][4] = {
  //    //"maximum number of possible polytomic trees (0=no limit)"},
  {"print.clade.info", "bool", "false", ""},
      //"output clade and tripartition information"},
+ {"run.brute", "bool", "false", ""}, 
+ //Run brute minimum switching algorithm
+
 
  // Utility options
  {"print.matrix.file", "string", "none", ""}, //"file for output matrix"}, 
@@ -208,7 +211,6 @@ string const gParameters[gParameterCount][4] = {
 
 
  // TO DEPRECATE
- {"hali", "bool", "false", ""}, // "output reconciliations in Hali's format"},
  {"extension.id", "string", "", ""}, // "ID added to the end of file"}
 };
 
@@ -329,7 +331,6 @@ void readParameters(
         string name = gParameters[i][0];
         string type = gParameters[i][1];
         string value;
-
              
         // get value 
         iterStr = params.find( name );	
@@ -344,6 +345,8 @@ void readParameters(
             if(name=="use.bootstrap.weighting") // "use.bootstrap.weighting" has been set
                 bootstrapWeightingSet=true;
         }
+
+
 
         if( type == "bool" ) {
             if ((value == "true") 
