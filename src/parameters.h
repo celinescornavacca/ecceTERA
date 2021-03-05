@@ -59,7 +59,7 @@ std::map<string,string> gStringParams; // string, char, and path
 
 // Ordered for the help message.
 // Parameters with an empty description are not displayed in the help.
-const int gParameterCount = 72; // This must matche the size of gParameters
+const int gParameterCount = 61; // This must matche the size of gParameters
 string const gParameters[gParameterCount][4] = {
 // basic options
  {"species.file", "path", "required", "species tree file (newick)" },
@@ -142,20 +142,6 @@ string const gParameters[gParameterCount][4] = {
  {"weight.amalgamation", "double", "0", 
      "weight multipler for clade costs (amalgamation)"}, 
 
-
- // suboptimal parameters
- {"min.recs", "double", "0", 
-     "epsilon increased until this number of reconciliations is reached"},
- {"min.recs.increment", "double", "1", "increments of epsilon with min.recs"},
- {"max.epsilon", "double", "30", "maximum epsilon with min.recs"},
- {"nD", "double", "0", "optional parameter for some triplets algorithms"},
- {"nL", "double", "0", "optional parameter for some triplets algorithms"},
- {"nDL", "double", "0", "optional parameter to some triplets algorithms"},
- {"pareto.mod", "int", "0", "triplets algorithm to use (1-3)"},
- {"real.epsilon", "bool", "false", 
-     "epsilon is a real value, rather than a percentage if true)"},
- {"suboptimal.epsilon", "double", "0", "compute suboptimal costs for epsilon)"},
-
  // ils options
  {"ils.cost", "double", "1", ""}, //"cost of a incomplete lineage sorting"},
  {"ils.cutoff", "double", "0", ""},
@@ -165,7 +151,6 @@ string const gParameters[gParameterCount][4] = {
 
    
  // hidden
- {"weighted.support", "bool", "false", ""}, //"use weighted event support)"},
  {"print.reroot.file", "string", "none", ""},
   //"output a rerooted input gene tree based on the amalgamation to this file"},
  {"reroot.proportion", "int", "2", ""},
@@ -176,8 +161,6 @@ string const gParameters[gParameterCount][4] = {
  //    //"maximum number of possible polytomic trees (0=no limit)"},
  {"print.clade.info", "bool", "false", ""},
      //"output clade and tripartition information"},
- {"run.brute", "bool", "false", ""}, 
- //Run brute minimum switching algorithm
 
 
  // Utility options
@@ -545,63 +528,7 @@ void readParameters(
     else 
         gNoEpsilon = false;
 
-    if( gIntParams.find("pareto.mod")->second < 0 
-        || gIntParams.find("pareto.mod")->second > 3 )
-    {
-        cout << "ERROR: pareto.mod option valid values are 0 to 3" << endl;
-        exit(1);
-    }
 
-    if( gIntParams.find("pareto.mod")->second != 1 ) {
-        if( gDoubleParams.find("nD")->second != 0 
-            || gDoubleParams.find("nDL")->second != 0 
-            || gDoubleParams.find("nL")->second != 0 ) 
-        {
-            cout << "WARNING: setting pareto.mod=1 because " 
-                << "it's paramaters (nD,nDL,nL) are non-zero." << endl;
-            gIntParams["pareto.mod"] = 1;
-        }
-    }
-
-    if( gIntParams.find("pareto.mod")->second == 1 ) {
-        if( gDoubleParams.find("nD")->second < 0 
-            || gDoubleParams.find("nD")->second > 1 )  
-        {
-            cout << "ERROR: given nD=" << gDoubleParams.find("nD")->second 
-                 << ", valid values are [0,1]" << endl;
-            exit(1);
-        }
-        if( gDoubleParams.find("nL")->second < 0 
-            || gDoubleParams.find("nL")->second > 1 ) 
-        {
-            cout << "ERROR: given nL=" << gDoubleParams.find("nL")->second 
-                 << ", valid values are [0,1]" << endl;
-            exit(1);
-        }
-
-        if( gDoubleParams.find("nDL")->second < 0 
-            || gDoubleParams.find("nDL")->second > 1 ) {
-            cout << "ERROR: given nDL=" << gDoubleParams.find("nDL")->second 
-                 << ", valid values are [0,1]" << endl;
-            exit(1);
-        }
-
-        gNoEpsilon = true;
-    }
-
-    if( gIntParams.find("pareto.mod")->second > 0 
-        && gDoubleParams.find("suboptimal.epsilon")->second < 0 ) 
-    {
-        cerr << "Epsilon cannot be negative." << endl;
-        exit(1);
-    }
-
-    if( gIntParams.find("pareto.mod")->second > 0 
-        && gDoubleParams.find("ils.cutoff")->second > 0 ) 
-    {
-        cerr << "ILS not supported with pareto.mod" << endl;
-        exit(1);
-    }
 
     if( gDoubleParams.find("ils.cutoff")->second > 0  
         && gIntParams.find("dated")->second != 2 ) 
@@ -610,9 +537,6 @@ void readParameters(
              << " dated species trees" << endl;
         exit(1);
     }
-
-    if( gBoolParams.find("hali")->second ) 
-        gBoolParams["print.info"] = true;
         
  if( gIntParams.find("collapse.mode")->second ==1 && (!gBoolParams.find("use.bootstrap.weighting")->second) &&  !bootstrapWeightingSet){
         cout << "Setting use.bootstrap.weighting=true" << endl;

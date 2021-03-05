@@ -84,9 +84,6 @@ bool DTLMatrix::COST_GREATER( double a, double b ) {
  * Given a pair of clades and species, a and b, calculate costs
  * from the matrix.
  *
- * If mSubOpt is true
- * find costsA and costsB, from the vector matrix and make all combinations
- * of additions, add otherCost, and push onto costList.
  *
  * @return lowest cost
  */
@@ -96,49 +93,17 @@ double DTLMatrix::computeCostList(
         int idXa, ///< species a
         int idUb, ///< clade b 
         int idXb, ///< species b
-        EventTriplet eventTrip, ///< events to add
         DTLMatrixState &state ) ///< various current info
 {
     double lowestCost = otherCost
                      + mMatrix.getValueSure(idUa,idXa)
                      + mMatrix.getValueSure(idUb,idXb);
-#ifndef SPEED
-    if( mSubOpt ) { 
-        // add other costs to costList
-        vector<double> costsA = mMatrixV->getValueSure(idUa,idXa); 
-        vector<double> costsB = mMatrixV->getValueSure(idUb,idXb); 
-        BOOST_FOREACH( double costA, costsA ) {
-            BOOST_FOREACH( double costB, costsB ) {
-                double cost = costA + costB + otherCost; 
-                if( COST_GREATER( cost, state.curBestEpsCost ) )
-                    continue;
- 
-                state.costList.push_back( cost );
-               
-                if( COST_GREATER( lowestCost, cost ) ) {
-                    cout << "lowestCost=" << lowestCost << endl;
-                    cout << "cost=" << cost << "=" << costA 
-                        << "+" << costB << "+" << otherCost << endl; 
-                    throw bpp::Exception ("DTLMatrix::computeCostList:"
-                            " impossible cost");
-                }
-            }
-        }
-    } else if( mTriplets ) {
-        computeList( idUa, idXa, idUb, idXb, 
-                lowestCost, state.curBestEpsCost, otherCost, eventTrip );
-    }
-#endif
-
     return lowestCost;
 }
 
 /**
  * Given a clade and specie, calculate costs from the matrix.
  *
- * If mSubOpt is true
- * find costsA, from the vector matrix and make all combinations
- * of additions, add otherCost, and push onto costList.
  *
  * @return lowest cost
  */
@@ -146,34 +111,9 @@ double DTLMatrix::computeCostList(
         double otherCost, ///< additional costs to add
         int idUa, ///< clade
         int idXa, ///< species
-        EventTriplet eventTrip, ///< events to add
         DTLMatrixState &state ) ///< various current info
 {
     double lowestCost = otherCost + mMatrix.getValueSure(idUa,idXa);
-#ifndef SPEED
-    if( mSubOpt ) {
-        // calculate all costs
-        vector<double> costsA = mMatrixV->getValueSure(idUa,idXa); 
-        BOOST_FOREACH( double costA, costsA ) {
-            double cost = costA + otherCost; 
-            if( COST_GREATER( cost, state.curBestEpsCost ) )
-                continue;
-
-            state.costList.push_back( cost );
-            
-            if( COST_GREATER( lowestCost, cost ) ) {
-                cout << "lowestCost = " << lowestCost << endl;
-                cout << "cost=" << cost << "=" << costA 
-                        << "+" << otherCost << endl; 
-                throw bpp::Exception ("computeCostList: impossible cost");
-            }
-        }
-    } else if( mTriplets ) {
-        computeList( idUa, idXa, 
-                lowestCost, state.curBestEpsCost, otherCost, eventTrip );
-    }
-#endif
-
     return lowestCost;
 }
 
@@ -215,39 +155,18 @@ void DTLMatrix::computeTransferCost(
 {
     int idUsub = idUl; 
     int idUother = idUr;
-    EventTriplet eventTrip;
     for( int i=0; i<2; i++ ) { // Calculate transfer in each direction 
         // optimumSub can be zero for second best receivers with 
         // no optimal cost (in leaves), skip it
         int optimumSub = mBestReceiver[state.timeSlice][idUsub];  
         if (optimumSub == -1)
             continue;
-#ifndef SPEED
-        if( mSubOpt ) { // for all VT, do a cost combination
-            if( optimumSub == state.idX ) {
-                BOOST_FOREACH( double c, mVT2[state.timeSlice][idUsub] ) 
-                    computeCostList( costThisSplit + state.hgtCost + c,
-                                     idUother, state.idX, eventTrip, state ); 
-            }
-			// transfer all optimal to this node (except self)
-            pair<double,int> p;
-            BOOST_FOREACH( p, mVT1[state.timeSlice][idUsub]) {
-                // don't add if it is this species node's cost
-                if( p.second != state.idX ) {
-                    computeCostList( costThisSplit + state.hgtCost + p.first, 
-                                     idUother, state.idX, eventTrip, state ); 
-                }
-            }
-        } else if( mTriplets ) { // for all VT, do a cost combination
-            computeTransferCostSub( optimumSub, idUsub, idUother, 
-                                 costThisSplit, state );
-        }
-#endif
+
 		// if the bestReceiver is x, we take the second one
 		if( optimumSub == state.idX ) 
 		    optimumSub = mSecondBestReceiver[state.timeSlice][idUsub]; 
 	
-		// compute the cost, even for mSubOpt
+		// compute the cost
 		if (optimumSub != -1) {
 		    // if state.idX is in Alpha or not it stays the same
 		    double cost = costThisSplit 
@@ -274,11 +193,11 @@ void DTLMatrix::computeTransferCost(
         //Transfers to alpha cost 0
         //c4	Transfer to alpha
         double cost = computeCostList( costThisSplit, idUl, state.idX, 
-                                idUr, alphaForThisTS, eventTrip, state ); 
+                                idUr, alphaForThisTS, state ); 
         UPDATE_OPT( optCost, bestSplit, cost, state.idX, alphaForThisTS, 'a' );
 
         cost = computeCostList( costThisSplit, idUr, state.idX, 
-                                idUl, alphaForThisTS, eventTrip, state ); 
+                                idUl, alphaForThisTS, state ); 
         UPDATE_OPT( optCost, bestSplit, cost, alphaForThisTS, state.idX, 'a' );
     }
 }
@@ -297,19 +216,17 @@ void DTLMatrix::computeDuplicationCost(
         BestSplit &bestSplit ) ///< current best split
 {
     double otherCosts = costThisSplit;
-    EventTriplet eventTrip;
 
 //    if( state.xNode->getInfos().WGD ) 
 //        otherCosts += mWGDCost;	// WG Duplication
 //    else 
     if( !mSpeciesTree->hasAlpha() || !mSpeciesTree->isAlpha( state.idX )) {
         otherCosts += state.dupliCost;	
-        eventTrip.d = 1;
     }
     //else duplication in alpha costs 0
     
     double cost = computeCostList( otherCosts, idUl, state.idX, 
-                                   idUr, state.idX, eventTrip, state );
+                                   idUr, state.idX, state );
     if( mSpeciesTree->hasAlpha() && mSpeciesTree->isAlpha( state.idX ) ) {
         UPDATE_OPT( optCost, bestSplit, cost, state.idX, state.idX, 'a' );
     } else {
@@ -332,15 +249,14 @@ void DTLMatrix::computeSpeciationCost(
         double &optCost, ///< current optimal cost
         BestSplit &bestSplit ) ///< current best split
 {
-    EventTriplet eventTrip;
 
     // Cospeciation impossible in Alpha, c2 Cospeciation
     double cost = computeCostList( costThisSplit,
-                    idUl, idXl, idUr, idXr, eventTrip, state );
+                    idUl, idXl, idUr, idXr, state );
     UPDATE_OPT( optCost, bestSplit, cost, idXl, idXr, 's' );
 
     cost = computeCostList( costThisSplit,
-                    idUl ,idXr, idUr, idXl, eventTrip, state );
+                    idUl ,idXr, idUr, idXl, state );
     UPDATE_OPT( optCost, bestSplit, cost, idXr, idXl, 's' );
 }
 
@@ -358,17 +274,16 @@ void DTLMatrix::computeIlsCost(
         double &optCost, ///< current optimal cost
         BestSplit &bestSplit ) ///< current best split
 {
-    EventTriplet eventTrip;
 
     double otherCosts = costThisSplit + mIlsCost;
 
     // Cospeciation impossible in Alpha, c2 Cospeciation
     double cost = computeCostList( otherCosts,
-                    idUl, idXl, idUr, idXr, eventTrip, state );
+                    idUl, idXl, idUr, idXr, state );
     UPDATE_OPT( optCost, bestSplit, cost, idXl, idXr, 'i' );
 
     cost = computeCostList( otherCosts,
-                    idUl ,idXr, idUr, idXl, eventTrip, state );
+                    idUl ,idXr, idUr, idXl, state );
     UPDATE_OPT( optCost, bestSplit, cost, idXr, idXl, 'i' );
 }
  
@@ -383,18 +298,16 @@ void DTLMatrix::computeSpeciationPlusLossCost(
         double &optCost, ///< current optimal cost
         BestSplit &bestSplit ) ///< current best split
 { 
-    EventTriplet eventTrip;
-    eventTrip.l = 1;
 
     double otherCosts = state.lossCost;
 
     // Cospeciation  + Loss impossible in Alpha
     //c3	Cospeciation + Loss
     double cost = computeCostList( otherCosts, state.idU, idXl, 
-                                    eventTrip, state );
+                                    state );
     UPDATE_OPT( optCost, bestSplit, cost, idXl, -1, 'l' );
 
-    cost = computeCostList( otherCosts, state.idU, idXr, eventTrip, state );
+    cost = computeCostList( otherCosts, state.idU, idXr, state );
     UPDATE_OPT( optCost, bestSplit, cost, idXr, -1, 'l' );
 }
 
@@ -409,15 +322,13 @@ void DTLMatrix::computeIlsPlusLossCost(
         double &optCost, ///< current optimal cost
         BestSplit &bestSplit ) ///< current best split
 { 
-    EventTriplet eventTrip;
-    eventTrip.l = 1;
 
     double otherCosts = state.lossCost + mIlsCost;
 
     // Cospeciation  + Loss impossible in Alpha
     //c3	Cospeciation + Loss
     double cost = computeCostList( otherCosts, state.idU, idXl, 
-                                    eventTrip, state );
+                                 state );
     UPDATE_OPT( optCost, bestSplit, cost, idXl, -1, 'j' );
 /*
 if( cost < 1000 ) {
@@ -428,7 +339,7 @@ cout << endl;
 }
 */
 
-    cost = computeCostList( otherCosts, state.idU, idXr, eventTrip, state );
+    cost = computeCostList( otherCosts, state.idU, idXr, state );
     UPDATE_OPT( optCost, bestSplit, cost, idXr, -1, 'j' );
 /*
 if( cost < 1000 ) {
@@ -449,18 +360,16 @@ void DTLMatrix::computeNullCost(
         double &optCost, ///< current optimal cost
         BestSplit &bestSplit ) ///< current best split
 {
-    EventTriplet eventTrip;
 
     double otherCosts = 0;
 //    if( state.xNode->getInfos().WGD ) {
         //c3 No Event in the case of a WGD, we pay for a loss 
         //and mWGDCost because the duplication happened
 //        otherCosts = mWGDCost + state.lossCost;		
-//        eventTrip.l = 1;
 //    }
     //else //c3 without loss i.e. No Event
     double cost = computeCostList( otherCosts, state.idU, idXl, 
-                                    eventTrip, state );		
+                                 state );		
 
 //    if( state.xNode->getInfos().WGD ) {
 //        UPDATE_OPT( optCost, bestSplit, cost, idXl, -1, 'w' );
@@ -596,13 +505,6 @@ cout << "  IL: " << optCost << endl;
         MySpeciesNode *xNode = mSpeciesTree->getNodeById( state.idX );
         if( mCladesTrips->mClades.getSpeciesName(state.idU) 
                 == xNode->getName() ) {
-#ifndef SPEED
-            if( mSubOpt ) 
-                state.costList.push_back( 0 );
-            else if( mTriplets ) { 
-                addZeroCost();
-            }
-#endif
             optCost = 0;
             bestSplit.event = 'f';
 #ifdef PRINT_COSTS
@@ -640,8 +542,7 @@ double DTLMatrix::computeOptimaForCell(
     // state variables in class
     state.idX = idX;
     //cout << state.idX <<" " << state.idU << endl;	
-    if( mSubOpt ) 
-        state.costList.clear();
+
     if( !mFixedCosts ) {
         MySpeciesNode *xNode = mSpeciesTree->getNodeById( idX );
         state.dupliCost = xNode->getInfos().duplicationCost;
@@ -689,26 +590,6 @@ double DTLMatrix::computeOptimaForCell(
     if( mUseBestSplits ) 
         mBestSplits[state.idU][state.idX] = bestSplit;
 
-    if( mSubOpt ) {
-        // sort and remove duplicates 
-        sort( state.costList.begin(), state.costList.end() );
-        size_t prev = 0;
-        int eraseCount = 0;
-        size_t listSize = state.costList.size();
-        for( size_t i=1; i<listSize; i++ ) {
-            if( !COST_EQUAL( state.costList[i], state.costList[prev] )) {
-                prev++;
-                if( prev != i )
-                    state.costList[prev] = state.costList[i];
-            } else
-                eraseCount++;
-        }
-        if( eraseCount > 0 )
-            state.costList.erase( state.costList.end()-eraseCount,
-                                  state.costList.end() );
-    } else if( mTriplets ) {
-        pushList( state );
-    }
 
     return optCost;
 } 
@@ -880,165 +761,6 @@ int DTLMatrix::computeBestReceivers(
 
 
 
-/**
- * Calculate all suboptimal best and second beceivers (VT1 and VT2) 
- * for the current clade and time slice.
- *
- * The list of species ids for the current time slice and their costs are
- * given.
- *
- * The results are stored in the following member variables:
- * mVT1 - all costs within epsilon of the optimal for current time slice, paired
- *  with an id if the cost is unique for that id, else paired
- *  with -1 (meaning multiple ids for this cost)
- * mVT2 - if mVT1 contains a single id, then mVT2 contains all costs
- *        (> BRcost <= BR2 cost)
- * mVT1all, mVT2all - list of ALL ids with costs in VT1 (VT2) for
- *  generating graph.
- *  
- */
-void DTLMatrix::computeVTs( 
-    bool noSub, ///< no subdivision if true
-    bool recompute, ///< replace existing values
-    int timeSlice, ///< time slice (not used if noSub is true)
-    int idU, ///< gene id
-    vector<int> &speciesNodeIdsTS, ///< nodes to considier
-    vector< vector<double> > &allCostsTS )
-        ///< all suboptimal costs associated with speciesNodeIdsTS
-{
-    // create cost/id pairs from the optVector
-    vector< pair<double,int> > costPairs;
-    vector<int> idXs; // id lists ordered the same as speciesNodeIdsTS
-    for( size_t nodeIndex=0; nodeIndex<speciesNodeIdsTS.size(); nodeIndex++ ) {
-        int idX = speciesNodeIdsTS[nodeIndex];
-
-        // ILS nodes cannot be the source of a transfer
-        // DOES THIS COVER ILS CHANGES FOR SUBOPT?
-        if( mSpeciesTree->hasILS() && mSpeciesTree->isILS( idX ) ) 
-            continue;
-
-        idXs.push_back( idX );
-        if( recompute ) {
-            vector<double> costs = mMatrixV->getValueSure(idU,idX); 
-            BOOST_FOREACH( double cost, costs )
-                costPairs.push_back( make_pair( cost, idX ) );
-        } else {
-            BOOST_FOREACH( double cost, allCostsTS[nodeIndex] )
-                costPairs.push_back( make_pair( cost, idX ) );
-        }
-    }
-
-    if( !noSub && recompute ) {
-        mVT1[timeSlice][idU].clear();
-        mVT2[timeSlice][idU].clear();
-        mVT1all[timeSlice][idU].clear();
-        mVT2all[timeSlice][idU].clear();
-    }
-
-    // sort 
-    sort( costPairs.begin(), costPairs.end() );
-
-    int br = -1;
-    int br2 = -1;
-    double brCost = 0;
-    double br2cost = 0;
-    if( !noSub ) {
-        br = mBestReceiver[timeSlice][idU];
-        brCost = mBestReceiverCost[timeSlice][idU];
-        br2 = mSecondBestReceiver[timeSlice][idU];
-        br2cost = mSecondBestReceiverCost[timeSlice][idU]; 
-    }
-    size_t loops = 1;
-    if( noSub )
-        loops = speciesNodeIdsTS.size();
-    for( size_t i=0; i<loops; i++ ) {
-        int ts = timeSlice;
-        if( noSub ) {
-            ts  = mSpeciesTree->getTimeSlice( speciesNodeIdsTS[i] );
-            brCost = mBestReceiverCost[ts][idU];
-            if( recompute ) {
-                mVT1[ts][idU].clear();
-                mVT2[ts][idU].clear();
-                mVT1all[ts][idU].clear();
-                mVT2all[ts][idU].clear();
-            }
-        }
-        bool firstCost = true;
-        double curCost = -1;
-        double lastBestCost = -1;
-        int bestId = -1;
-        int costCount = 0;
-        bool costGreater = false;
-        for( size_t j=0; j<costPairs.size(); j++ ) {
-            if( noSub && !mComparable[idXs[i]][costPairs[j].second] ) 
-                continue;
-            if( COST_GREATER( brCost, costPairs[j].first ) ) 
-                throw bpp::Exception("DTLMatrix::computeVTs:"
-                        " vt cost less than best receiver" );
-            if( COST_GREATER( costPairs[j].first, brCost + mEpsilon ) ) {
-                if( noSub ) 
-                    break; // seen everything
-               
-                if( COST_GREATER( costPairs[j].first, br2cost + mEpsilon ))
-                {
-                    costGreater = true;
-                    break; // second best finished, too
-                } else if( br2 != -1  // second best is not optimal
-                           && costPairs[j].second != br  )
-                {
-                    // second best receiver
-
-                    // add cost to second optimums list (mVT2) 
-                    // if within mEpsilon
-                    if( !COST_EQUAL( costPairs[j].first, curCost ) ) {
-                        mVT2[ts][idU].push_back( costPairs[j].first );
-                        curCost = costPairs[j].first;
-                    }
-                    // all ids with a cost within epsilon for second best
-                    // (except best receiver)
-                    if( recompute ) 
-                        mVT2all[ts][idU].push_back( costPairs[j].second );
-                }
-            } else { 
-                // best receiver (keep one pair for each cost)
-                if( firstCost || !COST_EQUAL( costPairs[j].first, curCost ) )
-                {
-                    if( firstCost )
-                        firstCost = false;
-                    else {
-                        // cost is different, add the id for previous cost
-                        mVT1[ts][idU].push_back( make_pair( curCost, bestId ) );
-                    }
-                    bestId = costPairs[j].second;
-                    curCost = costPairs[j].first;
-                    lastBestCost = curCost;
-                    costCount = 1;
-                } else {
-                    // An id of -1 indicates that there are multiple species
-                    // nodes with this cost.
-                    costCount++;
-                    bestId = -1;
-                }
-                // all ids with a cost within epsilon
-                if( recompute ) 
-                    mVT1all[ts][idU].push_back( costPairs[j].second );
-            }
-        }
-        if( costCount > 0 ) 
-            mVT1[ts][idU].push_back( make_pair( lastBestCost, bestId ) );
-
-        // remove duplicates
-        if( recompute ) {
-            removeDuplicates( mVT1all[ts][idU] );
-            if( !noSub ) {
-                removeDuplicates( mVT2all[ts][idU] );
-                if( costGreater )
-                    break; // done all costs greater then br
-           }
-        }
-    }
-}
-
 
 
 /**
@@ -1111,55 +833,6 @@ bool DTLMatrix::computeTransferLossCost(
 }
 
 
-/**
- * Add all possible transfer costs within suboptimal epsilon to
- * allCosts.
- */
-void DTLMatrix::computeTransferLossCostVT(
-    vector<double> &alphaCosts, ///< alpha costs
-    vector<double> &allCosts, ///< all suboptimal costs
-    DTLMatrixState &state ) ///< various current info
-{
-    if( mBestReceiver[state.timeSlice][state.idU] == -1 ) 
-        return; // no best receiver
-
-    double otherCosts = state.hgtCost;
-
-    //  transfer to alpha (TLTD) has no extra cost
-    if( !mSpeciesTree->hasAlpha() || !mSpeciesTree->isAlpha( state.idX ) ) 
-        otherCosts += state.lossCost;
-   
-    // for all VT, do a cost combination
-    if( state.idX == mBestReceiver[state.timeSlice][state.idU] ) {
-        // transfering to optimal species node
-        BOOST_FOREACH( double c, mVT2[state.timeSlice][state.idU] ) {
-            double cost = otherCosts + c;
-            if( !COST_GREATER( cost, state.curBestEpsCost) ) 
-                allCosts.push_back( cost );
-        }
-    } 
-
-    pair<double,int> p;
-    BOOST_FOREACH( p, mVT1[state.timeSlice][state.idU] ) {
-        // don't add if it is this species node's cost
-        if( p.second != state.idX ) {
-            double cost = otherCosts + p.first;
-            if( !COST_GREATER( cost, state.curBestEpsCost) ) 
-                allCosts.push_back( cost );
-        }
-    }
-
-    // Transfer from alpha.
-    if( mSpeciesTree->hasAlpha() && !mSpeciesTree->isAlpha( state.idX ) ) { 
-        BOOST_FOREACH( double alphaCost, alphaCosts ) {
-            double cost = alphaCost + state.lossCost;
-            if( !COST_GREATER( cost, state.curBestEpsCost) ) 
-                allCosts.push_back( cost );
-        }
-    }
-}
-
-
 
 /**
  * Initialize matrix and best receivers.
@@ -1170,7 +843,6 @@ void DTLMatrix::init()
     mCladeCount = mCladesTrips->mClades.getCladeCount();
 
     // create matrix
-    mMatrixV = NULL;
  	try{	
         // we can have at most 3GTnodes different clades all 
         // over all possible rootings of G
@@ -1197,9 +869,6 @@ void DTLMatrix::init()
     // not used in all cases (e.g. for recalculation)
     mBestSplits = NULL;
     mMatrixCalculated = false;
-    mEpsilon = 0;
-    mSubOpt = false;
-    mTriplets = false;
     mRecal = false;
     mUseILS = mSpeciesTree->hasILS();
 }
@@ -1283,24 +952,12 @@ DTLMatrix::~DTLMatrix()
         delete [] mBestReceiverCost[ts];
         delete [] mSecondBestReceiver[ts];
         delete [] mSecondBestReceiverCost[ts];
-        if( mSubOpt ) {
-            delete [] mVT1[ts];
-            delete [] mVT2[ts];
-            delete [] mVT1all[ts];
-            delete [] mVT2all[ts];
-        }
+
     }
     delete [] mBestReceiver;
     delete [] mBestReceiverCost;
     delete [] mSecondBestReceiver;
     delete [] mSecondBestReceiverCost;
-
-    if( mSubOpt ) {
-        delete [] mVT1;
-        delete [] mVT2;
-        delete [] mVT1all;
-        delete [] mVT2all;
-    }
 
     if( mBestSplits != NULL ) {
         for( int u=0; u<mCladeCount; u++ ) 
@@ -1308,63 +965,7 @@ DTLMatrix::~DTLMatrix()
         delete [] mBestSplits;
     }
 
-    if( mMatrixV != NULL ) 
-        delete mMatrixV;
 
-}
-
-
-
-/**
- * Initialize data structures for suboptimal calculations.
- */
-void DTLMatrix::initSubOpt() 
-{
-#ifdef SPEED
-    throw bpp::Exception( "DTLMatrix: subopt called with SPEED defined" );
-#endif
-    if( mTriplets ) 
-        throw bpp::Exception( "DTLMatrix: subopt called after triplets" );
-
-    if( mSubOpt ) {
-        // clean up previous
-        for( int ts=0; ts<=mMaxTS; ts++) {
-            delete [] mVT1[ts];
-            delete [] mVT2[ts];
-            delete [] mVT1all[ts];
-            delete [] mVT2all[ts];
-        }
-        delete [] mVT1;
-        delete [] mVT2;
-        delete [] mVT1all;
-        delete [] mVT2all;
-
-        delete mMatrixV;
-    }
-
-
-    mSubOpt = true;
-    mUseBestSplits = false;
-    mMatrixV = new MyMatrixV();
-    try{	
-        // we can have at most 3GTnodes different clades all 
-        // over all possible rootings of G
-        mMatrixV->setDim(mCladeCount,mSTnodes); 
-    }
-    catch (exception& genericException){
-        throw bpp::Exception("----Low memory!!! The dataset is too big-------");
-    }
-
-    mVT1 = new vector< pair<double,int> > *[mMaxTS+1];
-    mVT2 = new vector<double> *[mMaxTS+1];
-    mVT1all = new vector<int> *[mMaxTS+1];
-    mVT2all = new vector<int> *[mMaxTS+1];
-    for( int timeSlice=0; timeSlice<=mMaxTS; timeSlice++ ) {
-        mVT1[timeSlice] = new vector< pair<double,int> > [mCladeCount];
-        mVT2[timeSlice] = new vector<double> [mCladeCount];
-        mVT1all[timeSlice] = new vector<int> [mCladeCount];
-        mVT2all[timeSlice] = new vector<int> [mCladeCount];
-    }
 }
 
 void DTLMatrix::printAllCostsError(
@@ -1384,60 +985,6 @@ void DTLMatrix::printAllCostsError(
 }
 
 
-/**
- * Remove dupilcates and set matrix cost list.
- */
-void DTLMatrix::suboptSetFinalCosts( 
-    double optVal, ///< optimum
-    vector<double> &allCosts, ///< all suboptimal costs
-    DTLMatrixState &state, ///< various current info
-    bool checkOptVal )
-{
-
-    sort( allCosts.begin(), allCosts.end() );
-
-    // check matrix vector first value
-    if( checkOptVal && optVal < numeric_limits<double>::max()
-        && (allCosts.size() < 1 || !COST_EQUAL( allCosts[0], optVal) )) 
-    {
-        printAllCostsError( optVal, allCosts, state );
-        throw bpp::Exception("DTLMatrix::suboptSetFinalCosts:"
-                " matrix vector opt not right");
-    }
-
-    // remove duplicates
-    vector<double> finalList;
-    double prevValue = 0;
-    bool firstLoop = true;
-    BOOST_FOREACH( double c, allCosts ) 
-    {
-        // another check
-        if( checkOptVal && optVal < numeric_limits<double>::max()
-            && COST_GREATER( optVal, c ) ) 
-        {
-            printAllCostsError( optVal, allCosts, state );
-            throw bpp::Exception("adding an impossible cost to the matrix");
-        }
-
-        if( COST_GREATER( c, optVal+mEpsilon ) )
-            break;
-
-        // always add the first one, but don't add values
-        // close to previous values
-        if( firstLoop || !COST_EQUAL( prevValue, c ) ) {
-            finalList.push_back( c );
-            prevValue = c;
-        }
-
-        firstLoop = false;
-    }
-
-    mMatrixV->setValues( state.idU, state.idX, finalList );
-//cout << state.idU << "," << state.idX << " final:";
-//BOOST_FOREACH( double d, finalList)
-//    cout << "  " << d;
-//cout << endl;
-}
 
 /**
  * Calculate and set a matrix cell values for the given clade
@@ -1460,19 +1007,6 @@ void DTLMatrix::calculateMatrixTS(
     // nodes for this time slice
     vector<int> speciesNodeIdsTS = mSpeciesTree->getVectorWithTS( timeSlice );
 
-    // Find maximum cost to keep for this time slice.
-    if( mSubOpt || mTriplets ) {
-        for ( size_t i=0; i<speciesNodeIdsTS.size(); i++ ) {
-            state.idX = speciesNodeIdsTS[i];	
-            if( i==0 || state.curBestEpsCost 
-                    < mMatrix.getValueSure(state.idU,state.idX) )
-            {
-               state.curBestEpsCost = mMatrix.getValue(state.idU,state.idX);
-            }
-        }
-        state.curBestEpsCost += mEpsilon + state.hgtCost + state.lossCost;
-    }
-
     // compute costs 
     // score clade and store results in optVectorTS,
     // which contains tempOptima for each node in timeslice
@@ -1491,36 +1025,20 @@ void DTLMatrix::calculateMatrixTS(
         if( mSpeciesTree->isAlpha( speciesNodeIdsTS[i]) ) { 
             alphaCost = optAllOverTriples;
             int alphaIdx = (int) optVectorTS.size() - 1;
-            if( mTriplets )
-                setAlpha( alphaIdx );
-            else if( mSubOpt ) 
-                alphaCosts = state.costList;
+
         }
-        if( mSubOpt ) 
-            allCostsTS.push_back( state.costList );
 
         // Needed for ILS loss
         if( mUseILS ) {
             mMatrix.setValue( state.idU, speciesNodeIdsTS[i], 
                               optAllOverTriples );
-            if( mSubOpt ) 
-                suboptSetFinalCosts( optAllOverTriples, state.costList, state, 
-                                     false );
-            else if( mTriplets ) 
-                setFinalCosts( i, state );
         }
 
     }
 
     // calculate and set best receivers (first and second least cost nodes)
     if( speciesNodeIdsTS.size() > 1 ) {
-        if( mSubOpt ) 
-            computeVTs( false, false, timeSlice, idU, speciesNodeIdsTS, 
-                        allCostsTS ); 
-        else if( mTriplets ) 
-            computeVTs( false, false, timeSlice, idU, speciesNodeIdsTS ); 
-        else
-            computeBestReceivers(timeSlice, idU, speciesNodeIdsTS, optVectorTS);
+        computeBestReceivers(timeSlice, idU, speciesNodeIdsTS, optVectorTS);
     }
 
 
@@ -1537,34 +1055,14 @@ void DTLMatrix::calculateMatrixTS(
 
         // check for better opt by transfer
         if( mComputeTL && opt != 0 && speciesNodeIdsTS.size() > 1 ) {
-            if( (!mSubOpt && !mTriplets) || mUseILS )
-                computeTransferLossCost( alphaCost, opt, state );
+            computeTransferLossCost( alphaCost, opt, state );
 
-            if( mSubOpt ) 
-                computeTransferLossCostVT( alphaCosts, allCostsTS[i], state );
-             else if( mTriplets ) 
-                computeTransferLossCostVT( i, state );
         }
 
-        if( (!mSubOpt && !mTriplets) || mUseILS )
-            mMatrix.setValue( idU, state.idX, opt ); 
+        mMatrix.setValue( idU, state.idX, opt ); 
 
-        // set matrix value
-        if( mSubOpt ) 
-            suboptSetFinalCosts( mMatrix.getValueSure( idU, state.idX ),
-                                allCostsTS[i], state );
-        else if( mTriplets ) 
-            setFinalCosts( i, state );
     }
 
-    // update VTs with costs from transfer losses
-    if( speciesNodeIdsTS.size() > 1 ) {
-        if( mSubOpt ) 
-            computeVTs( false, true, timeSlice, idU, speciesNodeIdsTS, 
-                        allCostsTS ); 
-        else if( mTriplets ) 
-            computeVTs( false, true, timeSlice, idU, speciesNodeIdsTS ); 
-    }
 }
 
 
@@ -1593,30 +1091,11 @@ void DTLMatrix::calculateMatrix(
     bool updateWeightOnly, 
         ///< only update the weight costs, not DTL costs when doing iterations
     int dated, ///< 0=undated, 1=partially, 2=fully
-    double epsilon, ///< suboptimal epsilon (ignored if -1)
     int tsStart,    ///< time slice from which to start calculation (default=0)
     int tsEnd )     ///< last time slice to calculate (default is -1 = mMaxTS).
 {
     clock_t start = clock();
-
-    if( epsilon != -1 ) {
-        mEpsilon = epsilon;
-        initCalculation(); // initializes structures for subopt calculations
-        if( verbose ) {
-            if( mEpsilon == std::numeric_limits<double>::max() ) 
-                cout << "EPSILON unlimited" << endl;
-            else
-                cout << "EPSILON initialized " << mEpsilon << endl;
-        }
-
-        if( !mMatrixCalculated )
-            throw bpp::Exception("DTLMatrix::calculateMatrix: non-suboptimal"
-                " matrix calculation must be called before suboptimal call" );
-        if( maxIterations != 1 ) 
-            throw bpp::Exception("DTLMatrix::calculateMatrix: suboptimal"
-               " calculations only can do one iteration." );
-    }
-
+ 
     if( tsEnd == -1 )
         tsEnd = mMaxTS;
     else if( tsStart != 0 && !mMatrixCalculated ) 
@@ -1703,24 +1182,9 @@ void DTLMatrix::calculateMatrixNoSub(
         state.lossCost = mLossCost;
     }
 
-    if( mSubOpt || mTriplets ) {
-        for( int ts=0; ts<=mMaxTS; ts++ ) {
-            state.timeSlice = ts;
-            vector<int> singleNode = mSpeciesTree->getVectorWithTS( ts );
-            state.idX = singleNode[0];
-            if( ts==0 || state.curBestEpsCost 
-                    < mMatrix.getValueSure(state.idU,state.idX) )
-            {
-               state.curBestEpsCost = mMatrix.getValue(state.idU,state.idX);
-            }
-        }
-        state.curBestEpsCost += mEpsilon + state.hgtCost + state.lossCost;
-    }
-
     vector<double> optVector; // costs of speciesNodeIdsTS
     vector< vector<double> > allCosts; // subopt costs for each TS
     vector<int> speciesNodeIds;
-    vector<double> curBestCosts; // for mSubOpt
     double alphaCost = 0;
     vector<double> alphaCosts;
 	initTS(); // clear triplets
@@ -1737,42 +1201,14 @@ void DTLMatrix::calculateMatrixNoSub(
         // compute costs (it appends state.costList)
         double optAllOverTriples = computeOptimaForCell( 
                                         singleNode[0], 0, state );
-        optVector.push_back( optAllOverTriples ); 
-
-        if( mSubOpt ) 
-            allCosts.push_back( state.costList );
+        optVector.push_back( optAllOverTriples ); ;
 
         if( mSpeciesTree->isAlpha( state.idX ) ) { 
             alphaCost = optVector[0];
-            if( mTriplets ) {
-                int alphaIdx = (int) optVector.size() - 1;
-                setAlpha( alphaIdx );
-            } else if( mSubOpt ) 
-                alphaCosts = state.costList;
+ 
         }
 
         // set the matrix so that SL has something to use
-        if( mSubOpt || mTriplets ) {
-
-            if( mSubOpt && optVector[ts] !=  numeric_limits<double>::max() 
-                && allCosts[ts].size() == 0 ) 
-            {
-                throw bpp::Exception( "DTLMatrix::calculateMatrixNoSub:" 
-                        " allCosts is zero" );
-            } 
-
-            // This can be zero if best is max or if nothing
-            // is better than epsilon (only after TL)
-            if( mSubOpt && allCosts[ts].size() > 0 )
-                suboptSetFinalCosts( optVector.back(), allCosts.back(), state,
-                                     false );
-            else if( mTriplets ) 
-                setFinalCosts( ts, state );
-
-            // Save value for setting cost list.
-            // - pre TL value need for speciation calculations
-            curBestCosts.push_back( mMatrix.getValueSure( idU, state.idX ) );
-        }
 
         mMatrix.setValue( idU, state.idX, optVector.back() ); 
         speciesNodeIds.push_back( singleNode[0] );
@@ -1780,14 +1216,10 @@ void DTLMatrix::calculateMatrixNoSub(
 
     // set best receiever and cost for each node
     computeBestReceiversNoSub( idU, false, speciesNodeIds, optVector );
-    if( mSubOpt ) 
-        computeVTs( true, false, -1, idU, speciesNodeIds, allCosts ); 
-    else if( mTriplets ) 
-        computeVTs( true, false, -1, idU, speciesNodeIds ); 
 
 
 
-    if( !mComputeTL && !mSubOpt && !mTriplets )
+    if( !mComputeTL )
         return;
 
     // Calculate transfer loss costs and set matrix cell.
@@ -1806,28 +1238,17 @@ void DTLMatrix::calculateMatrixNoSub(
                 state.lossCost = xNode->getInfos().lossCost;
             }
 
-            if( mSubOpt ) {
-                computeTransferLossCostVT( alphaCosts, allCosts[ts], state );
-                suboptSetFinalCosts( curBestCosts[ts], allCosts[ts], state );
-            } else if( mTriplets ) {
-                computeTransferLossCostVT( ts, state );
-                setFinalCosts( ts, state );
-            } else {
-                computeTransferLossCost( alphaCost, opt, state );
-                mMatrix.setValue( idU, state.idX, opt ); 
-            }
+            
+            computeTransferLossCost( alphaCost, opt, state );
+            mMatrix.setValue( idU, state.idX, opt ); 
+            
         }
 
-        // make sure values are reset, even if TL is not computed
-        if( mSubOpt || mTriplets ) 
-            mMatrix.setValue( idU, state.idX, curBestCosts[ts] ); 
+
     }
 
     computeBestReceiversNoSub( idU, true, speciesNodeIds, optVector );
-    if( mSubOpt ) 
-        computeVTs( true, true, -1, idU, speciesNodeIds, allCosts ); 
-    else if( mTriplets ) 
-        computeVTs( true, true, -1, idU, speciesNodeIds ); 
+
 }
 
 /**
@@ -2413,16 +1834,11 @@ void DTLMatrix::addVertices(
     int x,     ///<  species id 
     const char *event, ///< event type to add
     double curCost,   ///< cost to compare 
-    double otherCost, ///< costs for this event
-    EventTriplet zTrip ) ///< event triplet
+    double otherCost) ///< costs for this event
 {
 	vector<double> values;
-    if( mSubOpt ) 
-		values = mMatrixV->getValue(u,x);
-    else if( mTriplets ) {
-throw bpp::Exception ("SHOULD NEVER SEE THIS");
-    } else
-		values.push_back( mMatrix.getValueSure(u,x) );
+
+	values.push_back( mMatrix.getValueSure(u,x) );
 
     for( size_t i=0; i<values.size(); i++ ) {
         // check if this cost matches the matrix cost
@@ -2458,20 +1874,14 @@ void DTLMatrix::addVertices(
     int x2,     ///< second species id
     const char*event, ///< event type to add
     double curCost,   ///< cost to compare 
-    double otherCost, ///< costs for this event
-    EventTriplet zTrip ) ///< event triplet
+    double otherCost) ///< costs for this event
 {
 	vector<double> values1;
 	vector<double> values2;
-    if( mSubOpt ) { 
-		values1 = mMatrixV->getValue(u1,x1);
-		values2 = mMatrixV->getValue(u2,x2);
-    } else if( mTriplets ) {
-throw bpp::Exception ("SHOULD NEVER SEE THIS2");
-	} else {
-		values1.push_back( mMatrix.getValueSure(u1,x1) );
-		values2.push_back( mMatrix.getValueSure(u2,x2) );
-    }
+
+	values1.push_back( mMatrix.getValueSure(u1,x1) );
+	values2.push_back( mMatrix.getValueSure(u2,x2) );
+    
     // create an event vertex and 2 pair vertices for each combination of costs
     for( size_t i=0; i<values1.size(); i++ ) {
         for( size_t j=0; j<values2.size(); j++ ) {
@@ -2586,19 +1996,16 @@ vector<DTLGraph::MyGraph::Vertex> DTLMatrix::getRootNodes(
 {
     vector<DTLGraph::MyGraph::Vertex> rootList;
 	double bestCost = getBestCost();
-    if( mSubOpt )
-        bestCost += mEpsilon;
+
     int rootClade = mCladesTrips->mClades.getRootClade();
     int j=0;
     if( keepRoot )
         j = mSpeciesTree->getRootNode()->getId();
     for( ; j<mSTnodes; j++ ) {	
 		vector<double> values;
-		if( mSubOpt ) {
-			values = mMatrixV->getValue(rootClade,j);
-		} else {
-			values.push_back( mMatrix.getValue(rootClade,j) );
-		}
+
+		values.push_back( mMatrix.getValue(rootClade,j) );
+		
         for( size_t i=0; i<values.size(); i++ ) {
             if( !COST_GREATER( values[i], bestCost ) ) {
                 DTLGraph::MyGraph::Vertex vertex
@@ -2628,12 +2035,8 @@ void DTLMatrix::createVertices(
 {
     int idU, idX;
     double cost;
-    EventTriplet trip;
-    if( mTriplets )
-        graph.getVertexIdentfiers( pairVertex, idU, idX, cost, 
-                                        trip.d, trip.t, trip.l );
-    else
-        graph.getVertexIdentfiers( pairVertex, idU, idX, cost );
+
+    graph.getVertexIdentfiers( pairVertex, idU, idX, cost );
 
     int ts = mSpeciesTree->getTimeSlice( idX );
     pair<int,int> split;
@@ -2673,19 +2076,19 @@ void DTLMatrix::createVertices(
         BOOST_FOREACH( split, speciesSplits ) {
             if( split.second != -1 ) {
                 addVertices( graph, pairVertex, qList, idUl, split.first, 
-                             idUr, split.second, "S", cost, 0, trip );
+                             idUr, split.second, "S", cost, 0 );
                 addVertices( graph, pairVertex, qList, idUl, split.second, 
-                             idUr, split.first, "S", cost, 0, trip );
+                             idUr, split.first, "S", cost, 0 );
             }
         }
 
         // Duplication costs
         addVertices( graph, pairVertex, qList, idUl, idX, 
-                     idUr, idX, "D", cost, mDupliCost, trip ); 
+                     idUr, idX, "D", cost, mDupliCost ); 
         // Duplication not in Alpha cost 0
         if( mSpeciesTree->hasAlpha() && idX == alphaIdForTS ) 
             addVertices( graph, pairVertex, qList, 
-                         idUl, idX, idUr, idX, "DD", cost, 0,  trip ); 
+                         idUl, idX, idUr, idX, "DD", cost, 0 ); 
         //if( xNode->getInfos().WGD ) // WGD
         //    addVertices( graph, pairVertex, qList, idUl, 
         //                 idX, idUr, idX, "WGD", cost, mWGDCost, trip ); 
@@ -2698,27 +2101,15 @@ void DTLMatrix::createVertices(
                 const char *event = "T";
                 if( mSpeciesTree->hasAlpha() && alphaIdForTS == idX ) 
                     event = "TFD";
-                if( mSubOpt || mTriplets ) {
-                    // if idX is best, include all secondary
-                    if( idX == mBestReceiver[ts][idUsub] ) {
-                        BOOST_FOREACH( int id, mVT2all[ts][idUsub] ) 
-                            addVertices( graph, pairVertex, qList, idUsub,
-                                id, idUother, idX, "T", cost, mHGTCost, trip ); 
-                    }
-                    // include all best receivers not equal to idX
-                    BOOST_FOREACH( int brId, mVT1all[ts][idUsub] ) 
-                        if( brId != idX ) 
-                            addVertices( graph, pairVertex, qList, idUsub, brId,
-                                   idUother, idX, event, cost, mHGTCost, trip );
-                } else {
-                    vector<int> allBRs = allBestReceivers[ts][idUsub][0];
-                    if( allBRs.size()==1 && allBRs.at(0)==idX ) 
-                       allBRs = allBestReceivers[ts][idUsub][1];
-                    BOOST_FOREACH( int brId, allBRs ) {
-                        if( brId != idX ) 
-                            addVertices( graph, pairVertex, qList, idUsub, brId,
-                                  idUother, idX, event, cost, mHGTCost, trip );
-                    }
+
+                vector<int> allBRs = allBestReceivers[ts][idUsub][0];
+                if( allBRs.size()==1 && allBRs.at(0)==idX ) 
+                    allBRs = allBestReceivers[ts][idUsub][1];
+                BOOST_FOREACH( int brId, allBRs ) {
+                    if( brId != idX ) 
+                        addVertices( graph, pairVertex, qList, idUsub, brId,
+                                idUother, idX, event, cost, mHGTCost );
+                
                 }
                  
                 //transfers to alpha cost 0
@@ -2727,7 +2118,7 @@ void DTLMatrix::createVertices(
                     && alphaIdForTS != -1 )
                 {
                     addVertices( graph, pairVertex, qList, idUsub, 
-                       alphaIdForTS, idUother, idX, "TTD", cost, 0, trip );
+                       alphaIdForTS, idUother, idX, "TTD", cost, 0 );
                 }
 
                 // switch to other child for second iteration
@@ -2741,9 +2132,9 @@ void DTLMatrix::createVertices(
     BOOST_FOREACH( split, speciesSplits ) {
         if( split.second != -1 ) {
             addVertices( graph, pairVertex, qList, idU, split.first, "SL", 
-                         cost, mLossCost, trip );
+                         cost, mLossCost );
             addVertices( graph, pairVertex, qList, idU, split.second, "SL", 
-                         cost, mLossCost, trip );
+                         cost, mLossCost );
         } else {
             // Null costs
                 //if( xNode->getInfos().WGD ) {
@@ -2756,46 +2147,31 @@ void DTLMatrix::createVertices(
                 //} else 
             // the null events are always the last ones
             addVertices( graph, pairVertex, qList, idU, split.first, "O", 
-                    cost, 0, trip );
+                    cost, 0 );
         }
     }
 
     // Transfer plus loss costs
-    if( mComputeTL ) {
-        if( mSubOpt || mTriplets ) {
-            if( idX == mBestReceiver[ts][idU] ) {
-                BOOST_FOREACH( int id, mVT2all[ts][idU] ) 
-                    addVertices( graph, pairVertex, qList, 
-                            idU, id, "TL", cost, mLossCost+mHGTCost, trip ); 
-            }
-            BOOST_FOREACH( int id, mVT1all[ts][idU] ) 
-                if( id != idX ) {
-                    addVertices( graph, pairVertex, qList,
-                            idU, id, "TL", cost, mLossCost+mHGTCost, trip ); 
-                    if( mSpeciesTree->hasAlpha() && alphaIdForTS == idX ) 
-                        addVertices( graph, pairVertex, qList,
-                            idU, id, "TLFD", cost, mHGTCost, trip ); 
-                }
-        } else {        
-            vector<int> allBRs = allBestReceivers[ts][idU][0];
-            if( allBRs.size()==1 && allBRs.at(0)==idX ) 
-                allBRs = allBestReceivers[ts][idU][1];
-            BOOST_FOREACH( int brId, allBRs ) 
-                if( brId != idX ) {
-                    addVertices( graph, pairVertex, qList, idU,  
-                                 brId, "TL", cost, mLossCost+mHGTCost, trip );
-                    if( mSpeciesTree->hasAlpha() && alphaIdForTS == idX )
-                        // transfer + loss  from alpha, they cost hgtCost
-                        addVertices( graph, pairVertex, qList, 
-                                    idU, brId, "TLFD", cost, mHGTCost, trip );
-                }
+    if( mComputeTL ) {           
+        vector<int> allBRs = allBestReceivers[ts][idU][0];
+        if( allBRs.size()==1 && allBRs.at(0)==idX ) 
+            allBRs = allBestReceivers[ts][idU][1];
+        BOOST_FOREACH( int brId, allBRs ) 
+        if( brId != idX ) {
+            addVertices( graph, pairVertex, qList, idU,  
+                                brId, "TL", cost, mLossCost+mHGTCost );
+            if( mSpeciesTree->hasAlpha() && alphaIdForTS == idX )
+                   // transfer + loss  from alpha, they cost hgtCost
+                  addVertices( graph, pairVertex, qList, 
+                                idU, brId, "TLFD", cost, mHGTCost );
         }
+        
     }
 
     //transfers to alpha plus loss cost lossCost
     if( mSpeciesTree->hasAlpha() && alphaIdForTS!=idX && alphaIdForTS!=-1 ) 
         addVertices( graph, pairVertex, qList, idU, 
-                alphaIdForTS, "TLTD", cost, mLossCost, trip );
+                alphaIdForTS, "TLTD", cost, mLossCost );
 
 
 
@@ -2810,25 +2186,25 @@ void DTLMatrix::createVertices(
         for( size_t i=0; i<ilsSplits.size(); i++ ) {
             if( ilsSplits[i].second == -1 ) {
                 addVertices( graph, pairVertex, qList, idU, ilsSplits[i].first,
-                    "O", cost, 0, trip );
+                    "O", cost, 0 );
             } else { 
                 // ILS
                 if( cladeSplit.first != -1 ) {
                     addVertices( graph, pairVertex, qList, cladeSplit.first, 
                             ilsSplits[i].first, cladeSplit.second, 
-                            ilsSplits[i].second, "I", cost, mIlsCost, trip );
+                            ilsSplits[i].second, "I", cost, mIlsCost );
                     addVertices( graph, pairVertex, qList, cladeSplit.first, 
                             ilsSplits[i].second, cladeSplit.second,
-                            ilsSplits[i].first, "I", cost, mIlsCost, trip );
+                            ilsSplits[i].first, "I", cost, mIlsCost );
                 }
 
                 // ILS + loss
                 addVertices( graph, pairVertex, qList, idU, 
                             ilsSplits[i].first, "IL", cost, 
-                            mLossCost+mIlsCost, trip );
+                            mLossCost+mIlsCost );
                 addVertices( graph, pairVertex, qList, idU, 
                              ilsSplits[i].second, "IL", cost, 
-                             mLossCost+mIlsCost, trip );
+                             mLossCost+mIlsCost );
             }
         }
     }
@@ -2859,11 +2235,9 @@ DTLGraph DTLMatrix::constructGraph(
             "not implemented with parallel matrix computation" );
 #endif
   
-    bool subopt = false;
-    if( mSubOpt || mTriplets )
-        subopt = true;
+
     // create graph 
-    DTLGraph graph( subopt, mTriplets, mSpeciesTree, mCladesTrips ); 
+    DTLGraph graph(mSpeciesTree, mCladesTrips ); 
     vector<int> *** allBestReceivers = getAllBestReceivers(); 
    
     // initialize the queue, qList, with the root nodes

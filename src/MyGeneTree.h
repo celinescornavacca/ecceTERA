@@ -93,7 +93,6 @@ public:
     static vector<MyGeneTree*> readMyGeneTrees( const char *treePathChar,
                                 string &errString, bool readBoostrap=false );
 
-
 };	
 
 #endif /*MYGENETREE_H_*/

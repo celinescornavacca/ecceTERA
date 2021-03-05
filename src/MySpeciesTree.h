@@ -224,8 +224,7 @@ public:
     // strale associated functions
     void breadthFirstreNumber();
     void lexicographicBreadthFirstreNumber();
-    vector<int> findChangedTimeSlices( MySpeciesTree *otherTree, 
-                                       bool printChanges=false );
+   
     string assignCosts( vector<double> &duplicationCosts, 
                         vector<double> &hgtCosts, vector<double> &lossCosts ); 
     void assignFixedCosts( double duplicationCost,

@@ -299,34 +299,17 @@ void DTLGraph::countSubReconciliationsFinishVertex(
  * The computeSupportDiscoverVertex function is used in a traversal
  * to do the calculation once the root sons are intialized.
  */
-void DTLGraph::computeSupport( 
-        double epsilon ) ///< Epsilon of costs (used if suboptimal)
+void DTLGraph::computeSupport() 
 {
 
     MyGraph::vertex_iter iter, v_end;
-
-    if( mWeighted ) {
-        // initialize supportVector for all events
-        int costCount = mRootVertices.size();
-        for(boost::tie(iter,v_end) = mGraph.getVertices(); 
-             iter != v_end; iter++) 
-	{
-            if( !mGraph.properties(*iter).isMapping ) 
-                mGraph.properties(*iter).supportVector.resize( costCount, 0 );
-        }
-    }
-
     // initialize root event sons
     int idx = 0;
     BOOST_FOREACH( MyGraph::Vertex root, mRootVertices ) {
         BOOST_FOREACH( MyGraph::Vertex son, mGraph.getAdjacentVertices(root) ) {
             if( mOnlyCanonical && mGraph.properties(son).name[0] == 'O' ) 
                 continue; // non-canonical, skip
-            if( mWeighted ) 
-                mGraph.properties(son).supportVector[idx]
-                    = mGraph.properties(son).recNumber;
-            else
-                mGraph.properties(son).support
+            mGraph.properties(son).support
                     = mGraph.properties(son).recNumber;
         }
         idx++;
@@ -337,8 +320,6 @@ void DTLGraph::computeSupport(
     breadthFirstTraversal( args, 
             &DTLGraph::computeSupportDiscoverVertex, NULL );
 
-    if( mSuboptimal ) 
-        generateMergedSupport( epsilon );
 }
 
 
@@ -346,9 +327,7 @@ void DTLGraph::computeSupport(
  * Traversal function for computeSupport.
  *
  * Calculates support for event nodes. Each event vertice's reconciliations
- * are assigned proportionally to the grand children. For weighted support
- * (mWeighted), the support for each root's subgraph is calculated
- * separately.
+ * are assigned proportionally to the grand children.
  */
 void DTLGraph::computeSupportDiscoverVertex( 
         MyGraph::Vertex z, ///< currently visited vertex
@@ -371,20 +350,11 @@ void DTLGraph::computeSupportDiscoverVertex(
         MyGraph::adjacency_vertex_range_t eventSons 
                 = mGraph.getAdjacentVertices(son);
         BOOST_FOREACH( MyGraph::Vertex eventSon, eventSons ) {
-            if( mWeighted ) {
-                // loop over each separate subgraph (different roots)
-                for( int idx=0; idx<rootCount; idx++ ) {
-                    mGraph.properties(eventSon).supportVector[idx] 
-                        += mGraph.properties(z).supportVector[idx]
-                            * mGraph.properties(eventSon).r 
-                            / mGraph.properties(z).recNumber;
-                }
-            } else {
-                mGraph.properties(eventSon).support 
-                    += mGraph.properties(z).support
-                       * mGraph.properties(eventSon).r 
-                       / mGraph.properties(z).recNumber;
-            }
+            mGraph.properties(eventSon).support 
+                += mGraph.properties(z).support
+                    * mGraph.properties(eventSon).r 
+                    / mGraph.properties(z).recNumber;
+            
         }
     }
 }
@@ -440,55 +410,6 @@ void DTLGraph::computeR(
 }
 
 
-/**
- * Merge support for similar events for suboptimal costs.
- *
- * For the suboptimal case, event supports (support)
- * must be merged for events with identical parent and
- * children clades and species (u,x), where the costs
- * can be different.
- *
- */
-void DTLGraph::generateMergedSupport( 
-        double epsilon ) ///< Epsilon of cost range for weighted calculation.
-{
-
-    // create map to identify similar events
-    map<string,vector<MyGraph::Vertex> > descriptors
-        = createEventDescriptorMap(); 
-
-    // loop over all unique events and merge support for the simliar events
-    map<string,vector<MyGraph::Vertex> >::const_iterator mapIter;
-    for( mapIter = descriptors.begin(); mapIter != descriptors.end(); mapIter++)
-    {
-        vector<MyGraph::Vertex> events = mapIter->second;
-        if( mWeighted ) {
-            for( size_t idx=0; idx<mRootVertices.size(); idx++ ) {
-
-                // get sum for this event
-                double supportSum = 0;
-                BOOST_FOREACH( MyGraph::Vertex event, events ) 
-                    supportSum += mGraph.properties(event).supportVector[idx];
-
-                // now set the value for each event
-                BOOST_FOREACH( MyGraph::Vertex event, events )
-                    mGraph.properties(event).supportVector[idx] = supportSum;
-            }
-        } else {
-            // get sum for this event
-            double supportSum = 0;
-            BOOST_FOREACH( MyGraph::Vertex event, events ) 
-                supportSum += mGraph.properties(event).support;
-
-            // now set the value
-            BOOST_FOREACH( MyGraph::Vertex event, events ) 
-                mGraph.properties(event).support = supportSum;
-        }
-    }
-
-    if( mWeighted ) 
-        weightSupport( epsilon );   
-}
 
 /**
  * Create string identifiers for events and map them to the events.
@@ -538,59 +459,6 @@ DTLGraph::createEventDescriptorMap()
     }
 
     return descriptorMap;
-}
-
-/**
- * Weight the support.
- *
- * Finish the weighted support calculation and save it in
- * the support property for each event vertex.
- */
-void DTLGraph::weightSupport( 
-        double epsilon ) ///< Epsilon of cost range for weighted calculation.
-{
-    // get optimal cost
-    double optCost = 0;
-    bool first = true;
-    BOOST_FOREACH( MyGraph::Vertex root, mRootVertices ) {
-        if( first || mGraph.properties(root).cost < optCost ) {
-            optCost = mGraph.properties(root).cost;
-            first = false;
-        }
-    }
-
-    // calculate p(c)
-    vector<double> costAdjs; // p(c) in algorithm
-    BOOST_FOREACH( MyGraph::Vertex root, mRootVertices ) {
-        double ratio = 0; 
-        if( epsilon > 0 )
-           ratio =  (mGraph.properties(root).cost - optCost) / epsilon;
-        costAdjs.push_back( exp( -ratio ) );
-    }
-
-    double costAdjsTotal = 0;
-    for( size_t idx=0; idx<costAdjs.size(); idx++ ) 
-        costAdjsTotal += costAdjs[idx];
-
-    // find weighted number of solutions
-    int idx = 0;
-    mWeightedNumberSolutions = 0;
-    BOOST_FOREACH( MyGraph::Vertex root, mRootVertices ) 
-        mWeightedNumberSolutions +=
-            mGraph.properties(root).recNumber*costAdjs[idx++] / costAdjsTotal;
-
-
-    MyGraph::vertex_iter iter, v_end;
-    for(boost::tie(iter,v_end) = mGraph.getVertices(); iter != v_end; iter++) {
-        if( mGraph.properties(*iter).isMapping )
-            continue; // event nodes only
-
-        mGraph.properties(*iter).support = 0;
-        for( size_t idx=0; idx<costAdjs.size(); idx++ ) 
-            mGraph.properties(*iter).support 
-                += mGraph.properties(*iter).supportVector[idx]
-                 *costAdjs[idx] / costAdjsTotal;
-    }
 }
 
 
@@ -916,18 +784,10 @@ string DTLGraph::createNameWithExternalIds(
 
     double cost = mGraph.properties(z).cost;
 
-    if( mPareto ) {
-        // get event triplets from name
-        string duplCount, transCount, lossCount;
-        getEvents( z, duplCount, transCount, lossCount );
-        return  "(" + bpp::TextTools::toString(pOrd) + "," 
-            + bpp::TextTools::toString(rpo) + ","
-            + bpp::TextTools::toString(cost,NAME_PRECISION) 
-            + "," + duplCount + "," + transCount + "," + lossCount + ")";
-    } else
-        return  "(" + bpp::TextTools::toString(pOrd) + "," 
-            + bpp::TextTools::toString(rpo) + ","
-            + bpp::TextTools::toString(cost,NAME_PRECISION) + ")";
+
+    return  "(" + bpp::TextTools::toString(pOrd) + "," 
+         + bpp::TextTools::toString(rpo) + ","
+        + bpp::TextTools::toString(cost,NAME_PRECISION) + ")";
 }
 
 
@@ -1305,10 +1165,8 @@ DTLGraph::MyGraph::Vertex DTLGraph::createPairVertex(
  * @return True if the number of solutions is finite.
  */
 bool DTLGraph::countReconciliationNumberAndCheck( 
-    double epsilon, ///< Epsilon, for suboptimal graphs.
     bool onlyCanonical, ///< Remove non-canonical vertices
-    bool verbose, ///< print debugging information
-    bool weighted ) ///< weight the support for each vertex (suboptimal)
+    bool verbose) ///< print debugging information
 {
     clock_t start = clock();
     mOnlyCanonical = onlyCanonical;
@@ -1319,19 +1177,11 @@ bool DTLGraph::countReconciliationNumberAndCheck(
         return false;
 
 
-    if( mSuboptimal ) //&& weighted ) {
-        mWeighted = weighted;
+
 
     // label graph with number reconciliations in which each vertex
     // is in (support)
-    computeSupport( epsilon );
-    if( mWeighted ) {
-        if( !boost::math::isfinite( mWeightedNumberSolutions ) ) 
-            return false;
-        if( verbose )
-            cout << "weighted solutions " << mNumberSolutions 
-                 << " -> " << mWeightedNumberSolutions << endl;
-    }
+    computeSupport();
 
 
     // Remove non-canonical vertices
@@ -1548,7 +1398,7 @@ void DTLGraph::backtrackEvents(
                               fz+mGraph.properties(eventSon1).score) ||
                 //if( ( diff < SCORE_DIFF ||
                     diff/mGraph.properties(parentVertex).score < SCORE_DIFF )
-                 )   //&& (!mPareto || sameEvents( parentVertex, eventSon1 ))
+                 )   
                 {
                     int idU = mGraph.properties(mappingVertex).id_u;
                     reconciliation[idU].push_back( mappingVertex );
@@ -1632,8 +1482,7 @@ void DTLGraph::backtrackEvents(
                                        score ) ||
                     //if( ( diff < SCORE_DIFF ||
                        diff/mGraph.properties(parentVertex).score < SCORE_DIFF )
-                      ) //&& (!mPareto 
-                        // || sameEvents( parentVertex, eventSon1, eventSon2 )))
+                      ) 
                     {
                         int idU = mGraph.properties(mappingVertex1).id_u;
                         reconciliation[idU].push_back( mappingVertex1 );
@@ -1750,7 +1599,7 @@ bool DTLGraph::getScoredReconciliation(
                     if( ( SCORE_EQUAL( mProblemScore, score ) 
                     //if( (diff < SCORE_DIFF 
                         || diff/mProblemScore < SCORE_DIFF )
-                      ) // && (!mPareto || sameEvents( root, eventSon )))
+                      ) 
                     {
                         int idU = mGraph.properties(root).id_u;
                         reconciliation[idU].push_back( root );
@@ -1875,67 +1724,7 @@ bool DTLGraph::validEvent(
             valid = false;
         }
     }
-/*
-    if( !mSuboptimal )
-        return valid;
 
-
-IF THIS IS TURNED ON, THE PRINT AND ALL RECONCILIATIONS FUNCTION NEED TO BE REDONE SINCE removenNonCanonical MIGHT NOT CLEAN CORRECTLY.
-    //////////////////// SUBOPTIMAL CHECKS ///////////////////////
-   
-    ////// SL ///////////////
-    if( eventName[0] == 'S' && eventName[1] == 'L' && eventSonName[0] == 'T' ) 
-    {
-        if( eventSonName[1] == 'L' ) {
-            // SL followed by a TL, the son of TL cannot 
-            // be the sibling of the son of SL (transfer to sibling)
-            int eventFatherId = getFatherXId( event );
-
-            MyGraph::Vertex TLson
-                = *((mGraph.getAdjacentVertices(eventSon)).first);
-            int fatherTLsonId = getSpeciesParentId(TLson);
-            
-cout << "SL+TL " << eventFatherId << " vs " << fatherTLsonId << endl;
-            //  check if TLson is also a child of z (eventFather)
-            if( eventFatherId == fatherTLsonId ) 
-                valid = false;
-
-        } else if( eventSonName[1] != 'L' ) {
-
-            // SL followed by T, children of T (T1 and T2) cannot be siblings
-            MyGraph::adjacency_vertex_range_t sons 
-                    = mGraph.getAdjacentVertices(eventSon);
-
-            int fatherT1_x = getSpeciesParentId(*(sons.first) );
-            int fatherT2_x = getSpeciesParentId(*(sons.first+1) );
-cout << "SL+T_ " << fatherT1_x << " vs " << fatherT2_x << endl;
-            // check if T sons are siblings
-            if( fatherT1_x == fatherT2_x ) 
-                valid = false;
-        }
-    }
-
-
-    ////// TL ///////////////
-    // TL followed by T, a son of T (T1 and T2) cannot be father of TL 
-    // (transfer back to original)
-    if( eventName[0] == 'T' && eventName[1] == 'L' 
-        && eventSonName[0] == 'T' && eventSonName[1] == '_' ) 
-    {
-        int eventFather_x = getFatherXId( event );
-
-        MyGraph::adjacency_vertex_range_t sons 
-                = mGraph.getAdjacentVertices(eventSon);
-        int T1_x = mGraph.properties(*(sons.first)).id_x;
-        int T2_x = mGraph.properties(*(sons.first+1)).id_x;
-cout << "TL+T_ " << eventFather_x << " == " << T1_x << " or " << T2_x << endl;
-        // check if T1_x or T2_x equals event father id_x
-        if( T1_x == eventFather_x || T2_x == eventFather_x ) {
-            valid = false;
-        }
-    }
-    
-*/
     return valid;
 }
 
@@ -1948,8 +1737,6 @@ cout << "TL+T_ " << eventFather_x << " == " << T1_x << " or " << T2_x << endl;
  * For canonical, D or T events with null children are not valid,
  * resulting in zero reconciliations.
  *
- * Furthermore, if suboptimal, certain conditions (e.g. 7),
- * restrict the number of reconciliations (not currently implemented).
  *
  * @return number of reconciliations or zero for invalid
  */
@@ -1978,133 +1765,11 @@ double DTLGraph::validRecNumber(
 //cout << "TOO - " << eventName << endl;
             return 0;
         }
-/*
-    if( !mSuboptimal )
-        return recNumber;
-
-
-    //////////////////// SUBOPTIMAL CHECKS ///////////////////////
-
-    ////// D ///////////////
-    if( eventName[0] == 'D' ) {
-        // No duplication followed by a TL.
-        if( (eventSon1Name[0] == 'T' && eventSon1Name[1] == 'L') 
-           || (eventSon2Name[0] == 'T' && eventSon2Name[1] == 'L') )
-        {
-cout << "D+TL " << eventName << endl;
-            return 0;   
-        }
-
-        // No duplications followed by two SLs,
-        // with children SL as siblings (ok if children are identical).
-        if( (eventSon1Name[0] == 'S' && eventSon1Name[1] == 'L') 
-            && (eventSon2Name[0] == 'S' && eventSon2Name[1] == 'L') )
-        {
-            MyGraph::Vertex firstSLson = 
-                *((mGraph.getAdjacentVertices(eventSon1)).first);
-            MyGraph::Vertex secondSLson = 
-                *((mGraph.getAdjacentVertices(eventSon2)).first);
-
-cout << "D+2SL: " << mGraph.properties(firstSLson).id_x << " and " 
-<< mGraph.properties(secondSLson).id_x << endl;
-            // check if SL sons don't have the same id_x
-            if( mGraph.properties(firstSLson).id_x 
-                    != mGraph.properties(secondSLson).id_x )
-                return 0;
-        }
-    }
-
-    ////// T ///////////////
-    if( eventName[0] == 'T' ) {
-
-        // The father(x) of TL must be transfered to,
-        // i.e., not the same as the original x.
-        int eventFather_x = getFatherXId( event );
-
-        if( eventSon1Name[0] == 'T' && eventSon1Name[1] == 'L' )  {
-            // check if eventSon1 father id_x != event father id_x 
-            // (or equivalently eventSon2 father id_x = event father id_x)
-            int eventSon1Father_x = getFatherXId( eventSon1 );
-            if( eventSon1Father_x != eventFather_x ) {
-cout << "T+TL 1 " << eventName << endl;
-                return 0;
-            }
-        }
-        if( eventSon2Name[0] == 'T' && eventSon2Name[1] == 'L' ) { 
-            // check if eventSon2 father id_x != event father id_x 
-            // (or equivalently eventSon1 father id_x = event father id_x)
-            int eventSon2Father_x = getFatherXId( eventSon2 );
-            if( eventSon2Father_x != eventFather_x ) {
-cout << "T+TL 2 " << eventName << endl;
-                return 0;
-            }
-        }
-
-
-        // condition7 check
-        double e21RecNum = condition7( eventSon1, eventSon2,);
-        recNumber -= e21RecNum*mGraph.properties(eventSon1).recNumber;
-        double e11RecNum = condition7( eventSon2, eventSon1 );
-        recNumber -= e11RecNum*mGraph.properties(eventSon2).recNumber;
-
-
-    }
-*/
-    return recNumber;
-}
-
-
-/*
-// SL and null children of T
-// for each child of null, if type is TL
-// return recNumber if son of TL is a sibling of the son of SL
-double DTLGraph::condition7( MyGraph::Vertex eventSon1, 
-            MyGraph::Vertex eventSon2 )
-{
-
-    string eventSon1Name = mGraph.properties(eventSon1).name;
-    string eventSon2Name = mGraph.properties(eventSon2).name;
-
-    double recNumber = 0;
-
-    if( eventSon1Name[0] == 'S' && eventSon1Name[1] == 'L'
-         && eventSon2Name[0] == 'O' ) 
-    {
-
-        MyGraph::adjacency_vertex_range_t SLsons 
-                        = mGraph.getAdjacentVertices( eventSon1 );
-        int SLsonParentX = getSpeciesParentId( *(SLsons.first) );
-
-        MyGraph::adjacency_vertex_range_t sons 
-                = mGraph.getAdjacentVertices(eventSon2);
-        MyGraph::Vertex nullSon = *(sons.first); // son of null event
-        // check z21 sons for a TL
-        MyGraph::adjacency_vertex_range_t nullGrandsons 
-                = mGraph.getAdjacentVertices(nullSon);
-        BOOST_FOREACH( MyGraph::Vertex nullGrandson, nullGrandsons) {
-            string nullGrandsonName = mGraph.properties(nullGrandson).name;
-            if( nullGrandsonName[0] == 'T' && nullGrandsonName[1] == 'L' )
-            {
-                MyGraph::adjacency_vertex_range_t TLsons 
-                        = mGraph.getAdjacentVertices(nullGrandson);
-                int TLsonParentX = getSpeciesParentId( *(TLsons.first) );
-
-                // check if TLson id_x is a sibling of eventSon1 father
-                if( SLsonParentX == TLsonParentX ) {
-cout << "COND7 " << SLsonParentX << " vs " << TLsonParentX << endl;
-                    recNumber = mGraph.properties(nullGrandson).recNumber;
-                    break;
-                }
-            }
-        }
-        
-    }
-
 
     return recNumber;
 }
 
-*/
+
 
 /**
  * Recursively find orthologous gene pairs.
@@ -2200,15 +1865,13 @@ void DTLGraph::printReconciliation(
     map<string,double> &eventSupports ) ///< event supports to use
 {
     vector<string> problems;
-    if( problemStr == "all" || problemStr == "allTriplets" ) {
+    if( problemStr == "all" ) {
         problems.push_back( "symmetric" );
         problems.push_back( "asymmetric" );
         problems.push_back( "random" );
     } else 
         problems.push_back( problemStr );
 
-    if( problemStr == "allTriplets" ) 
-        problems.push_back( "maxAvg" );
 
     isConsistent = false;
     BOOST_FOREACH( string curProblemStr, problems ) {

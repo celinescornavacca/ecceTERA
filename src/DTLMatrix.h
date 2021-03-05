@@ -62,8 +62,6 @@ for recalculated matrices.
 **/
 
 #include "MyMatrix.h"
-#include "MyMatrixV.h"
-#include "MyMatrixT.h"
 #include "CladesAndTripartitions.h"
 #include "DTLGraph.h"
 
@@ -105,24 +103,12 @@ protected:
 	virtual void initTS() { }
 
     virtual void setAlpha( int alphaIdx ) {}
-    void suboptSetFinalCosts( double optVal, vector<double> &allCosts, 
-                                DTLMatrixState &state, bool checkOptVal=true );
-    virtual void setFinalCosts( int index, DTLMatrixState &state ) {}
-
-    void computeVTs( bool noSub, bool recompute, int timeSlice, int idU, 
-                     vector<int> &speciesNodeIdsTS, 
-                     vector< vector<double> > &allCostsTS );    
-                     
+  
+                      
     void computeBestReceiversNoSub( int idU, bool recompute,
             vector<int> &speciesNodeIds, vector<double> &optVector );
         
-    void computeTransferLossCostVT( vector<double> &alphaCosts, 
-            vector<double> &allCosts, DTLMatrixState &state );
 
-    virtual void computeVTs( bool noSub, bool recompute, int timeSlice, 
-            int idU, vector<int> &speciesNodeIdsTS ) {};
-    virtual void computeTransferLossCostVT( int idx, DTLMatrixState &state ) {}
-    
 
     static const double COST_DIFF;     ///<Minimal Difference between costs
             ///< at which they are considered different.
@@ -143,11 +129,8 @@ protected:
     MySpeciesTree *mSpeciesTree; ///< species tree
     CladesAndTripartitions *mCladesTrips; ///< clades and tripartitions
 
-    bool mSubOpt; ///< suboptimal if true
-    bool mTriplets; ///< use suboptimal triplets if true
     bool mRecal; ///< true if this is a recalculation
 
-    double mEpsilon;    ///< suboptimal epsilson
     bool mMatrixCalculated; ///< true after calculateMatrix called
 
 
@@ -172,17 +155,9 @@ protected:
 	int **mSecondBestReceiver;   ///< all second best receivers
     double **mSecondBestReceiverCost;  ///< all second best receiver costs
     vector <int> mAllOtherBestReceivers; 
-        ///< list of best receivers with same cost as second best 
-        ///< for suboptimal graph construction
-    vector<int> **mVT1all; ///< all suboptimal best receivers
-    vector<int> **mVT2all; ///< all suboptimal second best receivers
+
     vector< vector<bool> > mComparable; ///< comparable species nodes
 
-    // suboptimal
-    MyMatrixV *mMatrixV;    ///< suboptimal matrix (vector costs)
-    vector< pair<double,int> > **mVT1; ///< suboptimal best receivers
-    vector<double> **mVT2; ///< suboptimal second best receivers
-    
 
     vector< vector<int> > mSubTreeIdLists;
         ///< lists of ids in each subtree
@@ -190,9 +165,9 @@ protected:
 
     void removeDuplicates( vector<int> &v );
     double computeCostList( double otherCost, int idUa, int idXa, 
-            int idUb, int idXb, EventTriplet eventTrip, DTLMatrixState &state );
+            int idUb, int idXb, DTLMatrixState &state );
     double computeCostList( double otherCost, int idUa, int idXa,
-            EventTriplet eventTrip, DTLMatrixState &state );
+            DTLMatrixState &state );
 
     void computeTransferCost( int idUl, int idUr, double costThisSplit, 
             DTLMatrixState &state, double &optCost, BestSplit &bestSplit );
@@ -227,12 +202,11 @@ protected:
 
     virtual void addVertices( DTLGraph &graph, DTLGraph::MyGraph::Vertex z, 
             vector<DTLGraph::MyGraph::Vertex> &qList, int u, int x,
-            const char*event, double curCost, double otherCost, 
-            EventTriplet zTrip );
+            const char*event, double curCost, double otherCost );
     virtual void addVertices( DTLGraph &graph, DTLGraph::MyGraph::Vertex z, 
             vector<DTLGraph::MyGraph::Vertex> &qList, 
             int u1, int x1, int u2, int x2, const char*event, 
-            double curCost, double otherCost, EventTriplet zTrip );
+            double curCost, double otherCost);
 
 private:
     // difference at which costs are considered different;
@@ -245,10 +219,10 @@ private:
     // cost functions
     virtual void computeList( int idUa, int idXa, int idUb, int idXb,
             double lowestCost, double curBestEpsCost, 
-            double otherCost, EventTriplet eventTrip ) {}
+            double otherCost ) {}
     virtual void computeList( int idUa, int idXa, 
             double lowestCost, double curBestEpsCost, 
-            double otherCost, EventTriplet eventTrip ) {}
+            double otherCost) {}
 
 
 
@@ -265,12 +239,6 @@ private:
         vector< vector<double> > &allCostsTS,
         double lastValue, vector<size_t> &indices, vector<int> &idList );
 
-//    virtual void computeVTs( vector<MyNode*> &speciesNodesTS, 
-//            DTLMatrixState &state ) {}
-//    virtual void computeVTsNoSub( vector<MyNode*> &speciesNodesTS, 
-//            DTLMatrixState &state ) {}
-
-
     // create graph functions
     vector<int> ***getAllBestReceivers();
     virtual vector<DTLGraph::MyGraph::Vertex> getRootNodes( DTLGraph &graph,
@@ -282,10 +250,6 @@ private:
 
     void clearBestReceivers(); // sets all best receiver info to -1
 
-    void initSubOpt();
-    virtual void initCalculation() { 
-        initSubOpt();
-    };
 
     void calculateMatrixTS( int idU, int timeSlice );
     virtual void calculateMatrixNoSub( int idU );
@@ -317,7 +281,7 @@ public:
     // the main functions
     void calculateMatrix( bool verbose=false, int maxIterations=1, 
             bool updateWeightOnly=false, int dated=2,
-            double epsilon=-1, int tsStart=0, int tsEnd=-1 );
+            int tsStart=0, int tsEnd=-1 );
 
     // lowest cost associated with gene root (all clade)
     double getBestCost( bool keepRoot=false );

@@ -148,15 +148,11 @@ private:
     bool SCORE_GREATER( double a, double b );
 
     bool mOnlyCanonical;  ///< remove non-canonical vertices if true 
-    bool mSuboptimal;     ///< graph contains suboptimal vertices if true
-    bool mPareto;         ///< use event triplets for suboptimal
-    bool mWeighted;       ///< weight suboptimal support by cost
-    int mEventNumber;     ///< counter for numbering events 
+     int mEventNumber;     ///< counter for numbering events 
     int mScoredProblem;   ///< which problem was scored in vertices
     int mMaxIdU;          ///< maximum idU value
     double mProblemScore; ///< median score for current problem (mScoredProblem)
     double mNumberSolutions; ///< number of solutions (traversals of graph)
-    double mWeightedNumberSolutions; ///< number of solutions with weights
     MySpeciesTree *mSpeciesTree;  ///< species tree used to calculate matrix
     CladesAndTripartitions *mCladesTrips; 
         ///< clades and tripartitions used in matrix calculation
@@ -203,10 +199,9 @@ private:
     void countSubReconciliationsFinishVertex( 
             MyGraph::Vertex z, ArgBase &baseArgs );
 
-    void computeSupport( double epsilon );
+    void computeSupport();
     void computeSupportDiscoverVertex( MyGraph::Vertex z, ArgBase &baseArgs );
     void computeR( MyGraph::Vertex z );
-    void generateMergedSupport( double epsilon );
     map<string,vector<MyGraph::Vertex> > createEventDescriptorMap(); 
     void weightSupport( double epsilon );
 
@@ -378,6 +373,7 @@ private:
     int getChildIdx( int idU,
         vector< vector<MyGraph::Vertex> > &reconciliation,
         size_t reconciliationIdx );
+
     string makeIntervals( int idU,
         vector< vector<MyGraph::Vertex> > &reconciliation,
         vector<double> &speciesStartDates, vector<double> &speciesEndDates,
@@ -386,6 +382,7 @@ private:
         double parentStartDate = -1, string fatherEvent = "ROOT",
         int prevRpo = -1,
         int seqNum = 0 );
+
     void printEvents( int idU, vector<int> &cladeToPOrd,
         vector< vector<MyGraph::Vertex> > &reconciliation,
         vector<double> &speciesEndDates,
@@ -397,18 +394,24 @@ private:
         string fatherEvent = "ROOT",
         string prevRealX = "ROOT", 
         string prevRealFatherX = "ROOT" );
+
         vector<string> getRecPhyloXMLReconciliation(
             vector< vector<MyGraph::Vertex> > &reconciliation );
+
         string getRecPhyloXMLReconciliation(
-            vector< vector<MyGraph::Vertex> > &reconciliation, int idUP, int idU,  vector< int>  &cladeToPOrd );    
+            vector< vector<MyGraph::Vertex> > &reconciliation, int idUP, int idU,  vector< int>  &cladeToPOrd );   
+
     vector<string> getSylvxReconciliation(
             vector< vector<MyGraph::Vertex> > &reconciliation );
+
     string getStringId( int idX );
+
     int getSibling( int idX, int sonX, bool realX );
+
     string getEventString( int idU, int z, 
             vector< vector<MyGraph::Vertex> > &reconciliation, 
             int idUl, int idUr, map<string,double> &eventSupports );
-
+            
     // used by traverseAll
     class DecisionNode {
         public:
@@ -441,15 +444,12 @@ private:
 public: 
     /** DTL Graph Constructor */
     DTLGraph( 
-            bool suboptimal, ///< Graph is suboptimal if true.
-            bool pareto, ///< use event triplets
             MySpeciesTree *speciesTree, 
                     ///< Species tree used to construct matrix.
             CladesAndTripartitions *cladesTrips ) 
                 ///< Clades/tripartions for the matrix.
-        : mOnlyCanonical(false), mSuboptimal(suboptimal), mPareto(pareto),
-        mWeighted(false), mEventNumber(0), mScoredProblem(-1), mMaxIdU(-1),
-        mNumberSolutions(-1), mWeightedNumberSolutions(-1), 
+        : mOnlyCanonical(false),
+        mEventNumber(0), mScoredProblem(-1), mMaxIdU(-1),
         mSpeciesTree(speciesTree), mCladesTrips(cladesTrips) {}
 
 
@@ -466,8 +466,8 @@ public:
 
 
     // compute graph properties
-    bool countReconciliationNumberAndCheck( double epsilon,
-                    bool onlyCanonical, bool verbose, bool weighted );
+    bool countReconciliationNumberAndCheck(
+                    bool onlyCanonical, bool verbose);
     void pruneNonoptimal();
 
 
@@ -504,11 +504,8 @@ public:
     /**
      * Return the number of solutions for graph.
      */
-    double getNumberSolutions( bool weighted = true ) { 
-        if( weighted && mWeightedNumberSolutions != -1 )
-            return mWeightedNumberSolutions; 
-        else
-            return mNumberSolutions; 
+    double getNumberSolutions() { 
+        return mNumberSolutions; 
     } 
 
     /**
