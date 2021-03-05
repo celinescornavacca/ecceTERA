@@ -1897,13 +1897,8 @@ void DTLGraph::printReconciliation(
         {
             vector<string> reconStrings; 
             string problemFileName = fileName + "_" + curProblemStr;
-// move consistency check here and pass ordering to sylvx if not dated?
-            if( sylvxFormat ) {
-                reconStrings = getSylvxReconciliation( reconciliation );
-                reverse( reconStrings.begin(), reconStrings.end() );
-                problemFileName += ".mr";
-            } 
-            else if (recPhyloXMLFormat) {
+            
+            if (recPhyloXMLFormat) {
                 reconStrings = getRecPhyloXMLReconciliation( reconciliation );
                 problemFileName += ".recPhyloXML";
             }
@@ -1971,7 +1966,6 @@ void printGTree(
     }
 }*/
 
-bool debugSylvx = false;
 
 double DTLGraph::getSpeciesDates(
         MySpeciesNode *node,    ///< species node
@@ -1991,8 +1985,6 @@ double DTLGraph::getSpeciesDates(
 
     if( mSpeciesTree->isAlpha( idX ) ) 
         endDates[idX] = 0;
-if( debugSylvx && node->getNumberOfSons() != 1 )
-cout << idX << " " << startDates[idX] << "-" << endDates[idX]  << endl;
 
     return len;
 }
@@ -2057,10 +2049,7 @@ string DTLGraph::makeIntervals(
     // leaf, return name
     if( name[0] == 'C' ) {
         eventDates[name] = 0;
-if( debugSylvx )
-cout << name << " (" << parentEvent << ")   (" 
-     << speciesStartDates[idX] << "-" << speciesEndDates[idX] << ") " 
-     << node->getName() << endl;
+
         return name;
     }
 
@@ -2151,15 +2140,8 @@ if( dist < 0 ) {
     throw bpp::Exception( "DTLGraph::makeIntervals: impossible interval" );
 }
         endDate = dist/(seqNum+1) + childEnd;
-if( debugSylvx )
-cout << " " << seqNum << " " << endDate << " from "
-    << parentStartDate << " - " << childEnd << endl;
-    }
 
-if( debugSylvx )
-cout << name << " (" << parentEvent << ") " << endDate 
-    << "  (" << speciesStartDates[idX] << "-" << speciesEndDates[idX] 
-        << ")" << endl;
+    }
 
     eventDates[name] = endDate;
 
@@ -2203,11 +2185,12 @@ void DTLGraph::printEvents(
     double startDate = eventDates[fatherEvent];
     double endDate =  eventDates[name];
 
-if( fatherEvent != "ROOT" && startDate < endDate ) {
-    cout << name << " invalid dates [" << startDate << "-"
+    if( fatherEvent != "ROOT" && startDate < endDate ) 
+    {
+        cout << name << " invalid dates [" << startDate << "-"
          << endDate << "]" << endl;
-    throw bpp::Exception( "DTLGraph::printEvents: invalid dates" );
-}
+        throw bpp::Exception( "DTLGraph::printEvents: invalid dates" );
+    }
     string realX;
     if( node->isLeaf() ) 
         realX = node->getName();
@@ -2259,8 +2242,7 @@ if( fatherEvent != "ROOT" && startDate < endDate ) {
         // print the gene id lines if this is the first event
         if( reconciliationIdx == 0 ) {
             eventsByIdU[nextU].push_back( "{" + pOrd + "," + childPord + "}" );
-if( debugSylvx )
-cout << "{" << pOrd << "," << childPord << "}  idU=" << nextU << endl;
+
         }
 
 
@@ -2275,8 +2257,7 @@ cout << "{" << pOrd << "," << childPord << "}  idU=" << nextU << endl;
                 speciesEndDates, eventDates, eventsByIdU, losses,
                 0, idX, name, realX, realFatherX );
             eventsByIdU[nextU].push_back( "{" + pOrd + "," + childPord + "}" );
-if( debugSylvx )
-cout << "{" << pOrd << "," << childPord << "}  idU=" << nextU << endl;
+
         }
     }
 
@@ -2304,8 +2285,7 @@ cout << "{" << pOrd << "," << childPord << "}  idU=" << nextU << endl;
             string event = "\t(" + realNextFatherX + "," + realNextX + ")"
                         + " [" + fatherStart
                         + "-" + nextEnd + "]";
-if( debugSylvx )
-cout << "ILS ADD: " << event << endl;
+
             eventsByIdU[idU].push_back( event );
             realNextX = realNextFatherX;
             nextEnd = fatherStart;
@@ -2315,8 +2295,7 @@ cout << "ILS ADD: " << event << endl;
         string event = "\t(" + realNextFatherX + "," + realNextX + ")"
                     + " [" + nextStart + "-" + nextEnd + "]";
         eventsByIdU[idU].push_back( event );
-if( debugSylvx )
-cout << "  " << name << " "  << event << endl;
+
     }
     
 
@@ -2327,8 +2306,7 @@ cout << "  " << name << " "  << event << endl;
                     + "-" + bpp::TextTools::toString( startDate ) 
                     + ":" + bpp::TextTools::toString( startDate ) + "]";
         eventsByIdU[idU].push_back( event );
-if( debugSylvx )
-cout << "  " << name << "-Ta " << event << endl;
+
     }
 
     if( fatherEvent[1] == 'L' ) {
@@ -2349,25 +2327,19 @@ cout << "  " << name << "-Ta " << event << endl;
             fatherXstr = prevRealFatherX;
             lostX = fatherX;
         }
-if( debugSylvx )
-cout << name << " Loss from father " << fatherEvent 
-     << " lostX=" << lostX  << " lostXstr=" << lostXstr
-     << " startDate = " << startDate
-     << " endDate=" << speciesEndDates[lostX] << endl;
+
         double lossEndDate = 4*(startDate - speciesEndDates[lostX])/5
                            + speciesEndDates[lostX];
 
         // add losses
         string event =  "{" + pOrd + "," + pOrd + "-" + lostXstr + "}";
-if( debugSylvx )
-cout << "loss: " << event << endl;
+
         losses.push_back( event );
         //losses.push_back( "{" + pOrd + "," + pOrd + "-}" );
         event = "\t(" + fatherXstr + "," + lostXstr + ")"
                     + " [" + bpp::TextTools::toString( startDate )
                     + "-" + bpp::TextTools::toString( lossEndDate ) + "]";
-if( debugSylvx )
-cout << "loss: " << event << endl;
+
         losses.push_back( event );
     }
 }
@@ -2580,75 +2552,6 @@ string DTLGraph::getRecPhyloXMLReconciliation(
 	return geneTree_recPhyloXML_format;
 };
 
-
-
-
-vector<string> DTLGraph::getSylvxReconciliation(
-    vector< vector<MyGraph::Vertex> > &reconciliation )
-{
-    int nodeCount = mSpeciesTree->getNumberOfNodes();
-    vector<double> speciesStartDates( nodeCount );
-    vector<double> speciesEndDates( nodeCount );
-    if( mSpeciesTree->isSubdivided() ) {
-        getSpeciesDates( mSpeciesTree->getRootNode(), speciesStartDates, 
-                         speciesEndDates );
-    } else {
-        // 1. check consistency
-// OR DO THIS BEFORE CALLING THIS FUNCTION (need ordering)
-        // 2. create a node ordering
-        // 3. set species start end dates
-        // 4. print a species tree (what file name? or return a string)
-// What about partial orderings?
-// For all reconciliations, need to print all species trees.
-    }
-
-    // makeIntervals: connected transfers and event intervals
-    vector<int> cladeToPOrd = mCladesTrips->getPostOrderMapping();
-    int cladeCount = cladeToPOrd.size();
-    map<string,double> eventDates;
-    int rootClade = mCladesTrips->mClades.getRootClade();
-    makeIntervals( rootClade, reconciliation, speciesStartDates, 
-        speciesEndDates, eventDates );
-
-
-    vector< vector<string> > eventsByIdU( cladeCount );
-    vector<string> losses;
-    printEvents( rootClade, cladeToPOrd, reconciliation,
-        speciesEndDates, eventDates, eventsByIdU, losses );
-
-
-
-    vector<int> pOrdToClade( cladeCount );
-    for( int i=0; i<cladeCount; i++ ) 
-        pOrdToClade[cladeToPOrd[i]] = i;
-
-    // create a string for each clade
-    vector<string> lines;
-    lines.push_back( "------------------------" );
-// add more info?
-    lines.push_back( "Rec teraRec" );
-	for( int pOrd = cladeCount-1; pOrd >=0; pOrd-- ) {
-        int idU = pOrdToClade[pOrd];
-        for( size_t i=eventsByIdU[idU].size(); i>0; i-- ) {
-            string str = eventsByIdU[idU][i-1];
-//cout << str << endl;
-if( eventsByIdU[idU].size() > 1 )
-            lines.push_back( str );
-else if( idU != rootClade ) {
-    cerr << "*** ERROR NO EVENTS" << endl;
-    cout << "*** NO EVENTS FOR idU " << idU << endl;
-    exit(1);
-}
-        }
-
-    }
-
-// use a vector merge
-    BOOST_FOREACH( string str, losses ) 
-        lines.push_back( str );
-
-    return lines;
-}
 
 
 
@@ -3231,19 +3134,15 @@ bool DTLGraph::printHandleRecon(
     PrintReconsArgs *args = (PrintReconsArgs*) &baseArgs;
 
     vector<string> reconStrings;
-    if( args->mSylvxFormat ) {
-        reconStrings = getSylvxReconciliation( recon );
-        reverse( reconStrings.begin(), reconStrings.end() );
-    } else {
-        map<string,double> eventSupports; // not used
-        reconStrings = printReconciliationAux( recon, eventSupports );
-    }
+
+    map<string,double> eventSupports; // not used
+    reconStrings = printReconciliationAux( recon, eventSupports );
+    
     bool printThisOne = true;
     if( args->mCheckConsistent && !isTimeConsistent( recon ) ) 
         printThisOne = false;
 
     if( printThisOne ) {
-        if( !args->mSylvxFormat ) 
             *(args->mOutFile) << reconNumber
                 << " =============================================" << endl;
         for( int i = reconStrings.size()-1; i>=0; i-- ) {

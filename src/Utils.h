@@ -423,7 +423,6 @@ void printReconciliations(
             graph.getEventSupports( eventSupports );
         }
         optGraph.printReconciliation( whichRecs, pathName,
-                gBoolParams.find("sylvx.reconciliation")->second, 
                 gBoolParams.find("recPhyloXML.reconciliation")->second, 
                 gBoolParams.find("check.time.consistency")->second, 
                 isConsistent, eventSupports );
@@ -433,23 +432,10 @@ void printReconciliations(
             pathName = gPathPrefix + 
                 gStringParams.find("print.reconciliations.file")->second
                 + ext;
-        graph.printReconciliation( whichRecs, pathName,
-                gBoolParams.find("sylvx.reconciliation")->second, 
+        graph.printReconciliation( whichRecs, pathName, 
                 gBoolParams.find("recPhyloXML.reconciliation")->second, 
                 gBoolParams.find("check.time.consistency")->second, 
                 isConsistent, eventSupports );
-    }
-
-    if( gIntParams.find("print.reconciliations")->second > 0
-        && gBoolParams.find("sylvx.reconciliation")->second ) 
-    {
-        // print a sylvx species tree
-        string fileName = gPathPrefix  
-                    + gStringParams.find("print.reconciliations.file")->second
-                    + "_sylvx_species.txt";
-        MySpeciesTree *tree = speciesTree->getPostorderTree( true );
-        tree->printNewick( fileName );
-        delete tree;
     }
 
     // check time consistency
@@ -480,8 +466,8 @@ void printReconciliations(
         if( gBoolParams.find("check.time.consistency")->second )
             pathName += "_consistent";
         long printCount = graph.printAllReconciliations( pathName, 
-                        gBoolParams.find("sylvx.reconciliation")->second, 
-                    	gBoolParams.find("recPhyloXML.reconciliation")->second, 
+                    	false,
+                        gBoolParams.find("recPhyloXML.reconciliation")->second, 
                         gBoolParams.find("check.time.consistency")->second,
                         gIntParams.find("solution.limit")->second );
         if( printCount != numberSolutions )
@@ -547,7 +533,6 @@ void makeGraph(
         }
         bool isConsistent = false;
         graph.printReconciliation( "random", pathName,
-            gBoolParams.find("sylvx.reconciliation")->second, 
             gBoolParams.find("recPhyloXML.reconciliation")->second, 
             gBoolParams.find("check.time.consistency")->second, 
             isConsistent, eventSupports);

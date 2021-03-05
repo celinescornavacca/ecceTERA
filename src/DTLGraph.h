@@ -401,9 +401,6 @@ private:
         string getRecPhyloXMLReconciliation(
             vector< vector<MyGraph::Vertex> > &reconciliation, int idUP, int idU,  vector< int>  &cladeToPOrd );   
 
-    vector<string> getSylvxReconciliation(
-            vector< vector<MyGraph::Vertex> > &reconciliation );
-
     string getStringId( int idX );
 
     int getSibling( int idX, int sonX, bool realX );
