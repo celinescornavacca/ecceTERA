@@ -6,8 +6,8 @@
 @file ecceTERA.cpp
 @author Celine Scornavacca
 @author Edwin Jacox
-@version 1.2.4 
-@date 14/09/2016
+@version 1.2.5 
+@date 16/07/2021
 
 @section LICENCE
 Copyright or © or Copr. CNRS
@@ -68,7 +68,7 @@ knowledge of the CeCILL license and that you accept its terms.
 #include "DTLMatrixNetwork.h"
 
 			
-string version = "1.2.4";
+string version = "1.2.5";
 
 //name, type, default, description
 std::map<string,bool> gBoolParams;
